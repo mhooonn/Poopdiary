@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '24.x'
 
-            - name: npm install and build
+      - name: npm install and build
         working-directory: ./backend
         run: |
           npm install
@@ -52,7 +52,7 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_FE6706C6614344ADACCF10742B694FB8 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8EFC575577564C8791E00BADB83C82D8 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
