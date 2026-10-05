@@ -6,7 +6,7 @@ Read [README.md](README.md) and `package.json` before working here. Prioritize p
 
 - Use JavaScript (`.js` / `.jsx`). Do not convert the project to TypeScript without team agreement. JSDoc and `checkJs` provide development checks.
 - Reuse `src/design-system` components and semantic theme tokens. See the README for UI rules, including stable dimensions across interaction states.
-- The current app is a component preview. Navigation and feature architecture remain team decisions; do not install a router or implement diary/backend features as part of UI foundation work.
+- Routes live in `src/app` (Expo Router). Keep them thin; shared navigation is in `src/navigation`, screens in `src/screens`, and API requests in `src/data/api`. Follow the README for current scope.
 
 ## Expo APIs and dependencies
 

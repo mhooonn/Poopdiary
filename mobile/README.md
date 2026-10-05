@@ -1,68 +1,59 @@
 # Poop Diary mobile
 
-Expo / React Native, using JavaScript. This starter displays the shared UI components; it does not save diary records or call the backend yet.
-
-Application source stays JavaScript; TypeScript is used only as a development checker through `checkJs`.
+Expo / React Native with JavaScript. The app currently provides the original navigation and empty screens for the team to build. TypeScript is a development checker (`checkJs`); application source stays JavaScript.
 
 ## Run
-
-From this directory:
 
 ```sh
 npm ci
 npm start -- --go
 ```
 
-Open the QR code with Expo Go on a phone connected to the same Wi-Fi. For a browser preview, run `npm run web`. Stop Metro before reinstalling dependencies.
+Scan with Expo Go on the same Wi-Fi. For a browser, use `npm run web`. Stop Metro before reinstalling dependencies.
 
-## Shared UI
+## Structure
 
 ```text
-src/design-system/
-  theme.js                 Colors, typography, spacing and component sizes
-  ThemeProvider.js         Light / dark / system appearance
-  components/              AppText, Button, Card, Choice, Screen
-  index.js                 Public imports
-src/screens/
-  ComponentsScreen.js      Interactive component preview
+src/app/              Thin Expo Router routes and layouts
+src/navigation/       Floating dock, Log menu and empty page scaffold
+src/screens/          Screen content, including Developer tools
+src/design-system/    Shared theme and components
+src/config/           Public app configuration
+src/data/api/         Read-only backend client
 ```
 
-Use these components and theme tokens in feature screens. Adjust shared values in `theme.js` instead of creating separate palettes or copying styles into each feature.
+Main tabs are Today, Diary, Insights and Profile. Log opens six empty editors. Product pages contain no mock records or feature UI. Add screen content separately; keep routing and API requests out of UI components.
 
-```jsx
-import { View } from 'react-native';
-import { Button, useTheme } from '../design-system';
+**Profile → Developer tools** opens API connection tests and the UI component preview. The preview supports light/dark/system appearance and control states.
 
-function SaveExample({ onSave }) {
-  const theme = useTheme();
-  return (
-    <View style={{ gap: theme.spacing.md }}>
-      <Button label="Save" onPress={onSave} />
-    </View>
-  );
-}
+## API connection
+
+Start the API in a separate terminal from `backend`:
+
+```sh
+npm ci
+npm start
 ```
 
-The preview shows both themes and control states. It is a development reference, not the final app navigation.
+In `mobile`, copy `.env.example` to `.env.local`, then reload the app. `EXPO_PUBLIC_API_URL` is the API base URL, without `/api`. The browser example uses `http://127.0.0.1:3000`.
+
+On a physical phone, use your computer's LAN IP (same Wi-Fi) or the deployed HTTPS API address. `localhost` on a phone points to the phone. For a LAN browser, add its full origin to backend `CORS_ORIGINS`; see the [backend README](../backend/README.md).
+
+Developer tools → Test connection reads `/api/health` and `/api/diary`. It shows actual success or failure; it does not write records. The diary response currently uses `id`, `date`, `water` and `symptoms`, with values preserved as returned by the server.
 
 ## UI rules
 
 - Keep UI copy and team documentation in English.
-- Use semantic theme colors and shared typography, spacing and sizes.
-- Selected, pressed, focused, disabled and loading states must preserve a control's size, position and label wrapping. Reserve space for indicators; keep border widths fixed.
-- Keep touch targets at least 48 logical pixels. Support native font scaling and long labels without clipping them.
-- Keep new components reusable; feature-specific data and API calls belong outside the design system.
+- Use shared components and semantic tokens from `src/design-system`. Change colors, typography, spacing and sizes in `theme.js`.
+- Selected, pressed, focused, disabled and loading states preserve control dimensions and label wrapping. Use constant borders and reserved indicators.
+- Keep touch targets at least 48 logical pixels and support larger text without clipping.
 
 ## Check
 
 ```sh
 npm run check
+npm run export:web
+npm run export:native
 ```
 
-This runs ESLint, JavaScript type checks and tests. Also check changed screens on a phone: web checks do not prove Android or iOS layout.
-
-For bundle checks, use `npm run export:web` or `npm run export:native`.
-
-GitHub Actions runs these checks, dependency compatibility checks and web/Android/iOS exports for mobile changes.
-
-Keep changes in small PRs so another teammate can run and review them.
+CI runs JavaScript checks, ESLint, tests, dependency checks and platform exports. Also check changed screens on a phone; web and bundle checks do not prove native layout.

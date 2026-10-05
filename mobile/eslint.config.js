@@ -15,7 +15,7 @@ module.exports = defineConfig([
     rules: { 'project/stable-control-layout': 'error' },
   },
   {
-    files: ['App.js', 'src/screens/**/*.js', 'src/features/**/*.js'],
+    files: ['App.js', 'src/app/**/*.js', 'src/screens/**/*.js', 'src/features/**/*.js', 'src/navigation/**/*.js'],
     rules: { 'project/design-tokens': 'error' },
   },
 ]);

@@ -4,7 +4,7 @@
  */
 
 /**
- * @typedef {'caption' | 'label' | 'body' | 'sectionTitle' | 'pageTitle' | 'heroTitle' | 'eyebrow'} TextVariant
+ * @typedef {'caption' | 'label' | 'body' | 'sectionTitle' | 'pageTitle' | 'heroTitle' | 'eyebrow' | 'navLabel' | 'logLabel'} TextVariant
  * @typedef {import('react-native').TextStyle & { fontSize: number, lineHeight: number }} TypographyToken
  */
 
@@ -17,6 +17,8 @@ const typography = {
   pageTitle: { fontSize: 32, lineHeight: 35, fontWeight: '700', letterSpacing: -1.5 },
   heroTitle: { fontSize: 40, lineHeight: 42, fontWeight: '400', letterSpacing: -1.8 },
   eyebrow: { fontSize: 10, lineHeight: 12, fontWeight: '800', letterSpacing: 1.4 },
+  navLabel: { fontSize: 10, lineHeight: 16, fontWeight: '700', textAlign: 'center' },
+  logLabel: { fontSize: 12, lineHeight: 12, fontWeight: '800', textAlign: 'center' },
 };
 
 const shared = {
@@ -33,6 +35,16 @@ const shared = {
     contentWidth: 600,
   },
   motion: { fast: 120, normal: 180 },
+  navigation: {
+    dockMaxWidth: 388,
+    dockInset: 13,
+    dockIcon: 18,
+    logSize: 52,
+    logRaise: 20,
+    logBorder: 5,
+    dockShadow: { width: 0, height: 10, radius: 24, opacity: 0.13, elevation: 8 },
+    logShadow: { width: 0, height: 8, radius: 18, opacity: 0.28, elevation: 5 },
+  },
 };
 
 const lightColors = {
