@@ -8,7 +8,8 @@ const appearances = /** @type {const} */ (['light', 'dark', 'system']);
 const severities = /** @type {const} */ (['mild', 'moderate', 'severe']);
 
 /** A working UI reference for the team, separate from future diary features. */
-export function ComponentsScreen() {
+/** @param {{onBack?: () => void}} props */
+export function ComponentsScreen({ onBack } = {}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { appearance, setAppearance } = useAppearance();
@@ -37,7 +38,7 @@ export function ComponentsScreen() {
   ];
 
   return <View style={{ flex: 1, backgroundColor: theme.colors.surface.canvas }}>
-    <Screen title="Poop Diary" subtitle="UI components" testID="components-screen">
+    <Screen title="UI components" onBack={onBack} testID="components-screen">
       <View style={{ gap: theme.spacing.sm }}>
         <AppText variant="sectionTitle" accessibilityRole="header">Appearance</AppText>
         <View accessibilityRole="radiogroup" accessibilityLabel="Appearance" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
