@@ -80,7 +80,7 @@ export function ComponentsScreen() {
 
       <Card>
         <AppText variant="sectionTitle" accessibilityRole="header">Choices</AppText>
-        <Choice label="Long option" description="Pidempi teksti näkyy kokonaan myös suuremmalla tekstikoolla. 较长文字也应完整显示。" selected={selected} selectionRole="checkbox" onPress={() => setSelected(!selected)} testID="choice-long" />
+        <Choice label="Long option" description="Longer descriptions should remain readable when text size is increased." selected={selected} selectionRole="checkbox" onPress={() => setSelected(!selected)} testID="choice-long" />
         <Choice label="Unavailable option" disabled onPress={() => undefined} testID="choice-disabled" />
         <View accessibilityRole="radiogroup" accessibilityLabel="Severity" style={{ gap: theme.spacing.sm }}>
           {severities.map((value) => <Choice key={value} label={value === 'mild' ? 'Mild' : value === 'moderate' ? 'Moderate' : 'Severe'} tone={value} selected={severity === value} onPress={() => setSeverity(value)} testID={`choice-${value}`} />)}

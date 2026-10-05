@@ -47,6 +47,7 @@ The preview shows both themes and control states. It is a development reference,
 
 ## UI rules
 
+- Keep UI copy and team documentation in English.
 - Use semantic theme colors and shared typography, spacing and sizes.
 - Selected, pressed, focused, disabled and loading states must preserve a control's size, position and label wrapping. Reserve space for indicators; keep border widths fixed.
 - Keep touch targets at least 48 logical pixels. Support native font scaling and long labels without clipping them.
