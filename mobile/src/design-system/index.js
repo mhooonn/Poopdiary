@@ -7,3 +7,6 @@ export { Choice } from './components/Choice';
 export { Screen } from './components/Screen';
 export { IconButton } from './components/IconButton';
 export { Sheet } from './components/Sheet';
+export { Slider } from './components/Slider';
+export { Stepper } from './components/Stepper';
+export { NoteField } from './components/NoteField';

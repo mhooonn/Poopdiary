@@ -28,6 +28,7 @@ const shared = {
   controls: {
     minimumTouchTarget: 48,
     choiceTileHeight: 104,
+    bowelTileHeight: 124,
     icon: 20,
     smallIcon: 16,
     borderWidth: 1,

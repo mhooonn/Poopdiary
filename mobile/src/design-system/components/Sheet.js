@@ -9,9 +9,9 @@ import { IconButton } from './IconButton';
 
 /**
  * @param {{visible: boolean, title: string, onClose: () => void,
- *   children: import('react').ReactNode}} props
+ *   children: import('react').ReactNode, dismissible?: boolean}} props
  */
-export function Sheet({ visible, title, onClose, children }) {
+export function Sheet({ visible, title, onClose, children, dismissible = true }) {
   const theme = useTheme();
   const reducedMotion = useReducedMotion();
   const { height } = useWindowDimensions();
@@ -39,7 +39,7 @@ export function Sheet({ visible, title, onClose, children }) {
   }, [visible, reducedMotion, backdrop, progress, theme.motion.normal]);
 
   const close = () => {
-    if (closing.current) return;
+    if (!dismissible || closing.current) return;
     closing.current = true;
     if (reducedMotion) { onClose(); return; }
     Animated.parallel([
@@ -66,7 +66,7 @@ export function Sheet({ visible, title, onClose, children }) {
           style={{ maxHeight: '100%', padding: theme.spacing.md, gap: theme.spacing.md }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
             <AppText variant="sectionTitle" accessibilityRole="header" style={{ flex: 1 }}>{title}</AppText>
-            <IconButton icon={X} label="Close" onPress={close} testID="sheet-close" />
+            <IconButton icon={X} label="Close" onPress={close} disabled={!dismissible} testID="sheet-close" />
           </View>
           <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: theme.spacing.md, paddingBottom: theme.spacing.md }}>
             {children}
