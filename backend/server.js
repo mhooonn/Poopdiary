@@ -14,6 +14,9 @@ const browserOrigins = (process.env.CORS_ORIGINS ||
     .split(",").map((origin) => origin.trim()).filter(Boolean);
 app.use(cors({ origin: browserOrigins }));
 
+// Food routes
+app.use("/api/food", foodRoutes);
+
 app.get("/", (req, res) => {
     res.send("Poop Diary API is running!");
 });
