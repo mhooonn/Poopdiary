@@ -71,15 +71,15 @@ function BowelEditorForm({ record }) {
   }, [form, step, warning, router]);
   useEffect(() => {
     // The native gesture leaves the route; later questions use in-flow Back.
-    navigation.setOptions({ gestureEnabled: step === 'shape' && !saving && !warning });
+    navigation.setOptions({ gestureEnabled: step === 'shape' && !saving && !warning && sheet === null });
     const listener = BackHandler.addEventListener('hardwareBackPress', () => { back(); return true; });
     return () => listener.remove();
-  }, [navigation, back, step, saving, warning]);
+  }, [navigation, back, step, saving, warning, sheet]);
 
   /** @param {Partial<import('./model').BowelForm>} changes */
   const patch = (changes) => { if (!writing.current) { setForm((current) => ({ ...current, ...changes })); setError(''); } };
   const persist = async () => {
-    if (writing.current || form.stoolType === undefined || warning) return;
+    if (writing.current || form.stoolType === undefined || warning || sheet === 'safety') return;
     writing.current = true; setSaving(true); setError('');
     try {
       const saved = await save(createPayload(form, record), record?.id);
