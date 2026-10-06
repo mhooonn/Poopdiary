@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const db = require("./database/db");
+const foodRoutes = require("./routes/food");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
