@@ -1,10 +1,6 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs/promises');
-const path = require('node:path');
 const { test } = require('node:test');
-
-const clientModule = fs.readFile(path.join(__dirname, '../src/data/api/client.js'), 'utf8')
-  .then((source) => import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`));
+const { clientModule } = require('./modules.cjs');
 
 test('reads current API routes and preserves server values', async () => {
   const { createApiClient } = await clientModule;

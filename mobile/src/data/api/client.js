@@ -1,14 +1,21 @@
-/** @typedef {'configuration' | 'network' | 'timeout' | 'http' | 'response' | 'cancelled'} ApiErrorCode */
+import { isBowelDraft, isBowelRecord, isUtcTimestamp } from '../../features/bowel/model';
+
+/** @typedef {import('../../features/bowel/model').BowelDraft} BowelDraft */
+/** @typedef {import('../../features/bowel/model').BowelRecord} BowelRecord */
+/** @typedef {'configuration' | 'network' | 'timeout' | 'http' | 'response' | 'cancelled' | 'validation'} ApiErrorCode */
 /** @typedef {{status: 'ok', message: string}} HealthResponse */
 /** @typedef {{id: number, date: string, water: number | null, symptoms: string | null}} DiaryEntry */
 /** @typedef {{signal?: AbortSignal}} RequestOptions */
+/** @typedef {RequestOptions & {from?:string, to?:string}} ListBowelOptions */
+/** @typedef {RequestOptions & {method?:'GET'|'POST'|'PUT'|'DELETE', body?:BowelDraft, empty?:boolean}} ApiRequestOptions */
 
 export class ApiError extends Error {
-  /** @param {ApiErrorCode} code @param {string} message */
-  constructor(code, message) {
+  /** @param {ApiErrorCode} code @param {string} message @param {number} [status] */
+  constructor(code, message, status) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
+    this.status = status;
   }
 }
 
@@ -33,7 +40,7 @@ function isDiary(value) {
 }
 
 /**
- * Read-only adapter for the team's current API. Values remain in the server's units.
+ * Adapter for the team's API. Values remain in the server's units.
  * @param {{baseUrl?: string, fetchImpl?: typeof fetch, timeoutMs?: number}} options
  */
 export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 }) {
@@ -41,10 +48,10 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
    * @template T
    * @param {string} path
    * @param {(value: unknown) => value is T} validate
-   * @param {RequestOptions} options
+   * @param {ApiRequestOptions} options
    * @returns {Promise<T>}
    */
-  async function read(path, validate, { signal } = {}) {
+  async function request(path, validate, { signal, method = 'GET', body, empty = false } = {}) {
     if (!baseUrl?.trim()) {
       throw new ApiError('configuration', 'Set EXPO_PUBLIC_API_URL in mobile/.env.local, then reload the app.');
     }
@@ -80,14 +87,17 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
       let response;
       try {
         response = await fetchImpl(url.toString(), {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
+          method,
+          headers: body ? { Accept: 'application/json', 'Content-Type': 'application/json' } : { Accept: 'application/json' },
+          ...(body ? { body: JSON.stringify(body) } : {}),
           signal: controller.signal,
         });
       } catch {
         throw new ApiError('network', 'Could not reach the API. Check the server, address, network and browser CORS settings.');
       }
-      if (!response.ok) throw new ApiError('http', `The API returned HTTP ${response.status}.`);
+      if (!response.ok) throw new ApiError('http', `The API returned HTTP ${response.status}.`, response.status);
+
+      if (empty && response.status === 204) return undefined;
 
       let result;
       try {
@@ -107,10 +117,44 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
     }
   }
 
+  /** @param {number} id */
+  function bowelPath(id) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError('validation', 'Choose a valid bowel movement.');
+    return `/api/bowel/${id}`;
+  }
+
+  /** @param {BowelDraft} value */
+  function draft(value) {
+    if (!isBowelDraft(value)) throw new ApiError('validation', 'Check the bowel movement before saving.');
+    return value;
+  }
+
   return {
     /** @param {RequestOptions} [options] */
-    getHealth: (options = {}) => read('/api/health', isHealth, options),
+    getHealth: (options = {}) => request('/api/health', isHealth, options),
     /** @param {RequestOptions} [options] */
-    getDiary: (options = {}) => read('/api/diary', isDiary, options),
+    getDiary: (options = {}) => request('/api/diary', isDiary, options),
+    /** @param {ListBowelOptions} [options] @returns {Promise<BowelRecord[]>} */
+    async listBowel(options = {}) {
+      const query = new URLSearchParams();
+      for (const key of /** @type {const} */ (['from', 'to'])) {
+        const value = options[key];
+        if (value !== undefined) {
+          if (!isUtcTimestamp(value)) throw new ApiError('validation', 'Choose a valid date range.');
+          query.set(key, value);
+        }
+      }
+      if (options.from && options.to && new Date(options.from) > new Date(options.to)) throw new ApiError('validation', 'The date range must end after it starts.');
+      const range = query.toString();
+      return request(`/api/bowel${range ? `?${range}` : ''}`, (value) => Array.isArray(value) && value.every(isBowelRecord), options);
+    },
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
+    async getBowel(id, options = {}) { return request(bowelPath(id), isBowelRecord, options); },
+    /** @param {BowelDraft} value @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
+    async createBowel(value, options = {}) { return request('/api/bowel', isBowelRecord, { ...options, method: 'POST', body: draft(value) }); },
+    /** @param {number} id @param {BowelDraft} value @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
+    async updateBowel(id, value, options = {}) { return request(bowelPath(id), isBowelRecord, { ...options, method: 'PUT', body: draft(value) }); },
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<void>} */
+    async deleteBowel(id, options = {}) { return request(bowelPath(id), (value) => value === undefined, { ...options, method: 'DELETE', empty: true }); },
   };
 }
