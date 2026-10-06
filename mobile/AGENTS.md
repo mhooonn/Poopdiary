@@ -1,6 +1,6 @@
 # Mobile agent guide
 
-Read [README.md](README.md) and `package.json` before working here. Prioritize phone layouts and native accessibility.
+Read the [team guide](../PROJECT_GUIDE.md), [README.md](README.md) and `package.json` before working here. Prioritize phone layouts and native accessibility.
 
 ## Team decisions
 

@@ -57,6 +57,8 @@ Bowel logging uses `/api/bowel` CRUD separately; its fields and status codes are
 - Selected, pressed, focused, disabled and loading states preserve control dimensions and label wrapping. Use constant borders and reserved indicators.
 - Keep touch targets at least 48 logical pixels and support larger text without clipping.
 
+Follow the [team Git rules](../PROJECT_GUIDE.md) for branches and commits.
+
 ## Check
 
 ```sh
