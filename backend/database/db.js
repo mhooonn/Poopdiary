@@ -17,6 +17,18 @@ db.serialize(() => {
         SELECT '2026-10-05', 2, 'Bloating'
         WHERE NOT EXISTS (SELECT 1 FROM diary);
     `);
+
+    // food table
+    db.run(`
+        CREATE TABLE IF NOT EXISTS food (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            food_name TEXT NOT NULL,
+            meal_type TEXT,
+            date TEXT NOT NULL,
+            notes TEXT
+        )
+    `);
+
 });
 
 module.exports = db;
