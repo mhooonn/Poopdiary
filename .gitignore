@@ -9,6 +9,7 @@ web-build/
 # Environment variables
 .env
 .env.local
+backend/.local/
 
 # OS
 .DS_Store

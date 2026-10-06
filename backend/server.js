@@ -1,10 +1,17 @@
 const express = require("express");
+const cors = require("cors");
 const db = require("./database/db");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// Native requests have no Origin; browser previews use an explicit allowlist.
+const browserOrigins = (process.env.CORS_ORIGINS ||
+    "http://localhost:8081,http://127.0.0.1:8081,http://localhost:8082,http://127.0.0.1:8082,http://localhost:8083,http://127.0.0.1:8083")
+    .split(",").map((origin) => origin.trim()).filter(Boolean);
+app.use(cors({ origin: browserOrigins }));
 
 app.get("/", (req, res) => {
     res.send("Poop Diary API is running!");
@@ -25,8 +32,6 @@ app.get("/api/diary", (req, res) => {
                 error: "Could not fetch diary entries"
             });
         }
-        console.log(rows);
-
         res.json(rows);
     });
 });
