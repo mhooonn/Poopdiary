@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, Button, Card, Choice, Screen, useAppearance, useTheme } from '../design-system';
+import { AppText, Button, Card, Choice, NoteField, Screen, Slider, Stepper, useAppearance, useTheme } from '../design-system';
 
 const appearances = /** @type {const} */ (['light', 'dark', 'system']);
 const severities = /** @type {const} */ (['mild', 'moderate', 'severe']);
@@ -19,6 +19,9 @@ export function ComponentsScreen({ onBack } = {}) {
   const [severity, setSeverity] = useState(/** @type {'mild' | 'moderate' | 'severe'} */ ('mild'));
   const [tile, setTile] = useState('food');
   const [feedback, setFeedback] = useState(0);
+  const [level, setLevel] = useState(4);
+  const [amount, setAmount] = useState(7);
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     if (!feedback) return;
@@ -89,6 +92,13 @@ export function ComponentsScreen({ onBack } = {}) {
         <View accessibilityRole="radiogroup" accessibilityLabel="Tile options" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
           {['food', 'bowel', 'water'].map((value, index) => <View key={value} style={{ flexGrow: 1, flexBasis: theme.controls.minimumTouchTarget * 2 }}><Choice label={{ food: 'Food', bowel: 'Bowel', water: 'Drinks' }[value] ?? value} layout="tile" badge={String(index + 1)} selected={tile === value} onPress={() => setTile(value)} testID={`tile-${value}`} /></View>)}
         </View>
+      </Card>
+
+      <Card>
+        <AppText variant="sectionTitle" accessibilityRole="header">Inputs</AppText>
+        <Slider label="Level" value={level} onChange={setLevel} disabled={disabled || loading} testID="preview-slider" />
+        <Stepper label="Amount" value={amount} min={0} max={24} onChange={setAmount} testID="preview-stepper" />
+        <NoteField value={note} onChange={setNote} disabled={disabled || loading} testID="preview-note" />
       </Card>
 
       <Card style={{ backgroundColor: theme.colors.feedback.danger.bg, borderColor: theme.colors.feedback.danger.fg }}>

@@ -1,2 +1,1 @@
-import { BlankScreen } from '../../navigation/BlankScreen';
-export default function DiaryRoute() { return <BlankScreen title="Diary" />; }
+export { BowelDiaryScreen as default } from '../../features/bowel/BowelDiaryScreen';

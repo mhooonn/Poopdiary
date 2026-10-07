@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 
 import { ThemeProvider, useReducedMotion, useTheme } from '../design-system';
+import { BowelProvider } from '../features/bowel/BowelProvider';
 
 export const unstable_settings = { initialRouteName: '(tabs)' };
 
@@ -25,5 +26,5 @@ function Navigation() {
 }
 
 export default function RootLayout() {
-  return <SafeAreaProvider><ThemeProvider><Navigation /></ThemeProvider></SafeAreaProvider>;
+  return <SafeAreaProvider><ThemeProvider><BowelProvider><Navigation /></BowelProvider></ThemeProvider></SafeAreaProvider>;
 }
