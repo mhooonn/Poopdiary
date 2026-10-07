@@ -46,4 +46,44 @@ router.post("/", (req, res) => {
     });
 });
 
+router.put("/:id", (req, res) => {
+    const { foodName, mealType, date, notes } = req.body;
+    const { id } = req.params;
+
+    if (!foodName || !date) {
+        return res.status(400).json({
+            error: "Food name and date are required"
+        });
+    }
+
+    const sql = `
+        UPDATE food
+        SET food_name = ?, meal_type = ?, date = ?, notes = ?
+        WHERE id = ?
+    `;
+
+    db.run(sql, [foodName, mealType, date, notes, id], function (err) {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: "Could not update food entry"
+            });
+        }
+
+        if (this.changes === 0) {
+            return res.status(404).json({
+                error: "Food entry not found"
+            });
+        }
+
+        res.json({
+            id,
+            foodName,
+            mealType,
+            date,
+            notes
+        });
+    });
+});
+
 module.exports = router;
