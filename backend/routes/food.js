@@ -14,4 +14,36 @@ router.get("/", (req, res) => {
     });
 });
 
+router.post("/", (req, res) => {
+    const { foodName, mealType, date, notes } = req.body;
+
+    if (!foodName || !date) {
+        return res.status(400).json({
+            error: "Food name and date are required"
+        });
+    }
+
+    const sql = `
+        INSERT INTO food (food_name, meal_type, date, notes)
+        VALUES (?, ?, ?, ?)
+    `;
+
+    db.run(sql, [foodName, mealType, date, notes], function (err) {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: "Could not add food entry"
+            });
+        }
+
+        res.status(201).json({
+            id: this.lastID,
+            foodName,
+            mealType,
+            date,
+            notes
+        });
+    });
+});
+
 module.exports = router;
