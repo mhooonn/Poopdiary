@@ -9,7 +9,7 @@ The API runs on port 3000 (`PORT` can override it). Current endpoints:
 
 - `GET /api/health`: server status.
 - `GET /api/diary`: SQLite diary rows. Create, edit and delete endpoints are not implemented yet.
-- `GET /api/food`: food rows.
+- `/api/food`: GET lists food rows, POST creates, PUT `/:id` updates, DELETE `/:id` removes. Writes accept `foodName`, `mealType`, `date` and `notes`; name and date are required.
 - `/api/bowel`: bowel records (contract below).
 
 SQLite defaults to `backend/diary.db` regardless of the working directory. Set `DATABASE_PATH` to use a separate local database; a new empty database receives the existing sample row.
