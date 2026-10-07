@@ -86,4 +86,27 @@ router.put("/:id", (req, res) => {
     });
 });
 
+router.delete("/:id", (req, res) => {
+    const { id } = req.params;
+
+    db.run("DELETE FROM food WHERE id = ?", [id], function (err) {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: "Could not delete food entry"
+            });
+        }
+
+        if (this.changes === 0) {
+            return res.status(404).json({
+                error: "Food entry not found"
+            });
+        }
+
+        res.json({
+            message: "Food entry deleted"
+        });
+    });
+});
+
 module.exports = router;
