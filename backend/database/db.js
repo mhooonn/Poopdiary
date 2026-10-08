@@ -7,18 +7,14 @@ const db = new sqlite3.Database(databasePath);
 
 db.serialize(() => {
     db.run(`
-        CREATE TABLE IF NOT EXISTS diary (
+        CREATE TABLE IF NOT EXISTS drinks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            water INTEGER,
-            symptoms TEXT
+            amount_ml INTEGER NOT NULL CHECK (amount_ml > 0),
+            drink_type TEXT NOT NULL,
+            local_date TEXT NOT NULL,
+            logged_at TEXT NOT NULL,
+            note TEXT
         )
-    `);
-
-    db.run(`
-        INSERT INTO diary (date, water, symptoms)
-        SELECT '2026-10-05', 2, 'Bloating'
-        WHERE NOT EXISTS (SELECT 1 FROM diary);
     `);
 
     // food table
