@@ -1,5 +1,6 @@
 import { isBowelDraft, isBowelRecord, isUtcTimestamp } from '../../features/bowel/model';
 
+
 /** @typedef {import('../../features/bowel/model').BowelDraft} BowelDraft */
 /** @typedef {import('../../features/bowel/model').BowelRecord} BowelRecord */
 /** @typedef {'configuration' | 'network' | 'timeout' | 'http' | 'response' | 'cancelled' | 'validation'} ApiErrorCode */
@@ -7,7 +8,16 @@ import { isBowelDraft, isBowelRecord, isUtcTimestamp } from '../../features/bowe
 /** @typedef {{id: number, date: string, water: number | null, symptoms: string | null}} DiaryEntry */
 /** @typedef {{signal?: AbortSignal}} RequestOptions */
 /** @typedef {RequestOptions & {from?:string, to?:string}} ListBowelOptions */
-/** @typedef {RequestOptions & {method?:'GET'|'POST'|'PUT'|'DELETE', body?:BowelDraft, empty?:boolean}} ApiRequestOptions */
+
+/** @typedef {RequestOptions & {method?:'GET'|'POST'|'PUT'|'DELETE', body?:BowelDraft | FoodDraft, empty?:boolean}} ApiRequestOptions */
+
+
+/** @typedef {{id: number, food_name: string, meal_type: string | null, date: string, notes: string | null}} FoodRecord */
+/** @typedef {{id: number, foodName: string, mealType?: string, date: string, notes?: string}} FoodResponse */
+/** @typedef {{foodName: string, mealType?: string, date: string, notes?: string}} FoodDraft */
+/** @typedef {{message: string}} FoodDeleteResponse */
+
+
 
 export class ApiError extends Error {
   /** @param {ApiErrorCode} code @param {string} message @param {number} [status] */
@@ -38,6 +48,37 @@ function isDiary(value) {
     && (entry.water === null || (typeof entry.water === 'number' && Number.isFinite(entry.water)))
     && (entry.symptoms === null || typeof entry.symptoms === 'string'));
 }
+
+
+/** @param {unknown} value @returns {value is FoodRecord} */
+function isFoodRecord(value) {
+  return isObject(value)
+    && Number.isSafeInteger(value.id)
+    && typeof value.food_name === 'string'
+    && typeof value.date === 'string'
+    && (value.meal_type == null || typeof value.meal_type === 'string')
+    && (value.notes == null || typeof value.notes === 'string');
+}
+
+/** @param {unknown} value @returns {value is FoodRecord[]} */
+function isFoodList(value) {
+  return Array.isArray(value) && value.every(isFoodRecord);
+}
+
+/** @param {unknown} value @returns {value is FoodResponse} */
+function isFoodCreated(value) {
+  return isObject(value)
+    && Number.isSafeInteger(value.id)
+    && typeof value.foodName === 'string'
+    && typeof value.date === 'string';
+}
+
+/** @param {unknown} value @returns {value is FoodDeleteResponse} */
+function isFoodDeleted(value) {
+  return isObject(value)
+    && value.message === 'Food entry deleted';
+}
+
 
 /**
  * Adapter for the team's API. Values remain in the server's units.
@@ -130,31 +171,90 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
   }
 
   return {
-    /** @param {RequestOptions} [options] */
-    getHealth: (options = {}) => request('/api/health', isHealth, options),
-    /** @param {RequestOptions} [options] */
-    getDiary: (options = {}) => request('/api/diary', isDiary, options),
-    /** @param {ListBowelOptions} [options] @returns {Promise<BowelRecord[]>} */
-    async listBowel(options = {}) {
-      const query = new URLSearchParams();
-      for (const key of /** @type {const} */ (['from', 'to'])) {
-        const value = options[key];
-        if (value !== undefined) {
-          if (!isUtcTimestamp(value)) throw new ApiError('validation', 'Choose a valid date range.');
-          query.set(key, value);
-        }
+  /** @param {RequestOptions} [options] */
+  getHealth: (options = {}) => request('/api/health', isHealth, options),
+
+  /** @param {RequestOptions} [options] */
+  getDiary: (options = {}) => request('/api/diary', isDiary, options),
+
+  // FOOD API
+
+    /** @param {RequestOptions} [options] @returns {Promise<FoodRecord[]>} */
+    listFood: (options = {}) =>
+      request('/api/food', isFoodList, options),
+
+    /** @param {FoodDraft} food @param {RequestOptions} [options] @returns {Promise<FoodResponse>} */
+    createFood: (food, options = {}) =>
+      request('/api/food', isFoodCreated, {
+        ...options,
+        method: 'POST',
+        body: food,
+      }),
+
+    /** @param {number} id @param {FoodDraft} food @param {RequestOptions} [options] @returns {Promise<FoodResponse>} */
+    updateFood: (id, food, options = {}) =>
+      request(`/api/food/${id}`, isFoodCreated, {
+        ...options,
+        method: 'PUT',
+        body: food,
+      }),
+
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<FoodDeleteResponse>} */
+    deleteFood: (id, options = {}) =>
+      request(`/api/food/${id}`, isFoodDeleted, {
+        ...options,
+        method: 'DELETE',
+      }),
+
+  // BOWEL API (existing code)
+
+  /** @param {ListBowelOptions} [options] @returns {Promise<BowelRecord[]>} */
+  async listBowel(options = {}) {
+    const query = new URLSearchParams();
+    for (const key of /** @type {const} */ (['from', 'to'])) {
+      const value = options[key];
+      if (value !== undefined) {
+        if (!isUtcTimestamp(value)) throw new ApiError('validation', 'Choose a valid date range.');
+        query.set(key, value);
       }
-      if (options.from && options.to && new Date(options.from) > new Date(options.to)) throw new ApiError('validation', 'The date range must end after it starts.');
-      const range = query.toString();
-      return request(`/api/bowel${range ? `?${range}` : ''}`, (value) => Array.isArray(value) && value.every(isBowelRecord), options);
-    },
-    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
-    async getBowel(id, options = {}) { return request(bowelPath(id), isBowelRecord, options); },
-    /** @param {BowelDraft} value @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
-    async createBowel(value, options = {}) { return request('/api/bowel', isBowelRecord, { ...options, method: 'POST', body: draft(value) }); },
-    /** @param {number} id @param {BowelDraft} value @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
-    async updateBowel(id, value, options = {}) { return request(bowelPath(id), isBowelRecord, { ...options, method: 'PUT', body: draft(value) }); },
-    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<void>} */
-    async deleteBowel(id, options = {}) { return request(bowelPath(id), (value) => value === undefined, { ...options, method: 'DELETE', empty: true }); },
-  };
+    }
+    if (options.from && options.to && new Date(options.from) > new Date(options.to)) {
+      throw new ApiError('validation', 'The date range must end after it starts.');
+    }
+    const range = query.toString();
+    return request(`/api/bowel${range ? `?${range}` : ''}`, (value) => Array.isArray(value) && value.every(isBowelRecord), options);
+  },
+
+  /** @param {number} id @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
+  async getBowel(id, options = {}) {
+    return request(bowelPath(id), isBowelRecord, options);
+  },
+
+  /** @param {BowelDraft} value @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
+  async createBowel(value, options = {}) {
+    return request('/api/bowel', isBowelRecord, {
+      ...options,
+      method: 'POST',
+      body: draft(value),
+    });
+  },
+
+  /** @param {number} id @param {BowelDraft} value @param {RequestOptions} [options] @returns {Promise<BowelRecord>} */
+  async updateBowel(id, value, options = {}) {
+    return request(bowelPath(id), isBowelRecord, {
+      ...options,
+      method: 'PUT',
+      body: draft(value),
+    });
+  },
+
+  /** @param {number} id @param {RequestOptions} [options] @returns {Promise<void>} */
+  async deleteBowel(id, options = {}) {
+    return request(bowelPath(id), (value) => value === undefined, {
+      ...options,
+      method: 'DELETE',
+      empty: true,
+    });
+  },
+};
 }
