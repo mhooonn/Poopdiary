@@ -6,20 +6,24 @@ import { isBowelDraft, isBowelRecord, isUtcTimestamp } from '../../features/bowe
 /** @typedef {import('../../features/bowel/model').BowelRecord} BowelRecord */
 /** @typedef {'configuration' | 'network' | 'timeout' | 'http' | 'response' | 'cancelled' | 'validation'} ApiErrorCode */
 /** @typedef {{status: 'ok', message: string}} HealthResponse */
-/** @typedef {{id: number, date: string, water: number | null, symptoms: string | null}} DiaryEntry */
 /** @typedef {{signal?: AbortSignal}} RequestOptions */
 /** @typedef {RequestOptions & {from?:string, to?:string}} ListBowelOptions */
+/** @typedef {'water'|'coffee'|'tea'|'soda'|'juice'|'milk'|'alcohol'|'custom'} DrinkType */
+/** @typedef {{amount_ml:number,drink_type:DrinkType,note?:string|null}} DrinkChanges */
+/** @typedef {DrinkChanges & {logged_at:string,local_date:string}} DrinkDraft */
+/** @typedef {DrinkDraft & {id:number,note:string|null}} DrinkRecord */
+/** @typedef {RequestOptions & {date?:string}} ListDrinksOptions */
 
 // Food types
 /** @typedef {{id: number, food_name: string, meal_type: string | null, date: string, time: string | null, notes: string | null}} FoodRecord */
 
 /** @typedef {{id: number, foodName: string, mealType?: string | null, date: string, time?: string | null, notes?: string | null}} FoodResponse */
 
-/** @typedef {{foodName: string, mealType?: string, date: string, time?: string | null, notes?: string}} FoodDraft */
+/** @typedef {{foodName: string, mealType?: string | null, date: string, time?: string | null, notes?: string}} FoodDraft */
 
 /** @typedef {{message: string}} FoodDeleteResponse */
 
-/** @typedef {RequestOptions & {method?:'GET'|'POST'|'PUT'|'DELETE', body?:BowelDraft | FoodDraft, empty?:boolean}} ApiRequestOptions */
+/** @typedef {RequestOptions & {method?:'GET'|'POST'|'PUT'|'DELETE', body?:BowelDraft | FoodDraft | DrinkDraft | DrinkChanges, empty?:boolean}} ApiRequestOptions */
 
 
 
@@ -44,14 +48,33 @@ function isHealth(value) {
   return isObject(value) && value.status === 'ok' && typeof value.message === 'string';
 }
 
-/** @param {unknown} value @returns {value is DiaryEntry[]} */
-function isDiary(value) {
-  return Array.isArray(value) && value.every((entry) =>
-    isObject(entry)
-    && typeof entry.id === 'number' && Number.isFinite(entry.id)
-    && typeof entry.date === 'string' && entry.date.length > 0
-    && (entry.water === null || (typeof entry.water === 'number' && Number.isFinite(entry.water)))
-    && (entry.symptoms === null || typeof entry.symptoms === 'string'));
+/** @param {unknown} value @returns {value is string} */
+function isLocalDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T12:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+const drinkTypes = ['water', 'coffee', 'tea', 'soda', 'juice', 'milk', 'alcohol', 'custom'];
+
+/** @param {unknown} value @returns {value is DrinkChanges} */
+function isDrinkChanges(value) {
+  return isObject(value) && Number.isSafeInteger(value.amount_ml) && /** @type {number} */ (value.amount_ml) > 0
+    && typeof value.drink_type === 'string' && drinkTypes.includes(value.drink_type)
+    && (value.note == null || (typeof value.note === 'string' && value.note.length <= 1000));
+}
+
+/** @param {unknown} value @returns {value is DrinkDraft} */
+function isDrinkDraft(value) {
+  return isDrinkChanges(value) && isUtcTimestamp(/** @type {DrinkDraft} */ (value).logged_at)
+    && isLocalDate(/** @type {DrinkDraft} */ (value).local_date);
+}
+
+/** @param {unknown} value @returns {value is DrinkRecord} */
+function isDrinkRecord(value) {
+  return isDrinkDraft(value) && Number.isSafeInteger(/** @type {DrinkRecord} */ (value).id)
+    && /** @type {DrinkRecord} */ (value).id > 0
+    && (value.note === null || typeof value.note === 'string');
 }
 
 
@@ -178,12 +201,15 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
     return value;
   }
 
+  /** @param {number} id */
+  function drinkPath(id) {
+    if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError('validation', 'Choose a valid drink entry.');
+    return `/api/drinks/${id}`;
+  }
+
   return {
   /** @param {RequestOptions} [options] */
   getHealth: (options = {}) => request('/api/health', isHealth, options),
-
-  /** @param {RequestOptions} [options] */
-  getDiary: (options = {}) => request('/api/diary', isDiary, options),
 
   // FOOD API
 
@@ -213,6 +239,35 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
         ...options,
         method: 'DELETE',
       }),
+
+  /** @param {ListDrinksOptions} [options] @returns {Promise<DrinkRecord[]>} */
+  async listDrinks(options = {}) {
+    if (options.date !== undefined && !isLocalDate(options.date)) throw new ApiError('validation', 'Choose a valid date.');
+    const query = options.date === undefined ? '' : `?date=${encodeURIComponent(options.date)}`;
+    return request(`/api/drinks${query}`, (value) => Array.isArray(value) && value.every(isDrinkRecord), options);
+  },
+
+  /** @param {number} id @param {RequestOptions} [options] @returns {Promise<DrinkRecord>} */
+  async getDrink(id, options = {}) {
+    return request(drinkPath(id), isDrinkRecord, options);
+  },
+
+  /** @param {DrinkDraft} value @param {RequestOptions} [options] @returns {Promise<DrinkRecord>} */
+  async createDrink(value, options = {}) {
+    if (!isDrinkDraft(value)) throw new ApiError('validation', 'Check the drink before saving.');
+    return request('/api/drinks', isDrinkRecord, { ...options, method: 'POST', body: value });
+  },
+
+  /** @param {number} id @param {DrinkChanges} value @param {RequestOptions} [options] @returns {Promise<DrinkRecord>} */
+  async updateDrink(id, value, options = {}) {
+    if (!isDrinkChanges(value)) throw new ApiError('validation', 'Check the drink before saving.');
+    return request(drinkPath(id), isDrinkRecord, { ...options, method: 'PUT', body: value });
+  },
+
+  /** @param {number} id @param {RequestOptions} [options] @returns {Promise<void>} */
+  async deleteDrink(id, options = {}) {
+    return request(drinkPath(id), (value) => value === undefined, { ...options, method: 'DELETE', empty: true });
+  },
 
   // BOWEL API (existing code)
 

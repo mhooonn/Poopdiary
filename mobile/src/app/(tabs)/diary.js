@@ -1,1 +1,1 @@
-export { BowelDiaryScreen as default } from '../../features/bowel/BowelDiaryScreen';
+export { DiaryScreen as default } from '../../screens/DiaryScreen';

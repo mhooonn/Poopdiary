@@ -1,6 +1,6 @@
 # Poop Diary mobile
 
-Expo / React Native with JavaScript. Navigation, shared UI and bowel logging are implemented. TypeScript is a development checker (`checkJs`); application source stays JavaScript.
+Expo / React Native with JavaScript. Food, Bowel and Drinks use the Express API and one shared Diary. TypeScript checks the source with `checkJs`.
 
 ## Run
 
@@ -15,21 +15,27 @@ Scan with Expo Go on the same Wi-Fi. For a browser, use `npm run web`. Stop Metr
 
 ```text
 src/app/              Thin Expo Router routes and layouts
-src/navigation/       Floating dock, Log menu and empty page scaffold
+src/navigation/       Floating dock, shared Log menu and feedback
 src/screens/          Screen content, including Developer tools
 src/design-system/    Shared theme and components
 src/config/           Public app configuration
 src/data/api/         Backend client
-src/features/bowel/   Bowel form, API state and Diary section
+src/features/         Feature forms; shared Diary model, loading and details
 ```
 
-Main tabs are Today, Diary, Insights and Profile. Log opens six recording routes; only Bowel is implemented. Other feature pages remain empty. Keep routing and API requests out of UI components.
+Main tabs are Today, Diary, Insights and Profile. Log opens six recording routes; Food, Bowel and Drinks are connected. Symptoms, Exercise and Sleep remain placeholders. Keep API requests in `src/data/api`.
 
 ## Bowel movements
 
-Log → Bowel → choose a shape → Save. More details adds effort, symptoms, severity, pain location, time and an optional note. New and edit use the same form. Diary shows server records by local date; tap an entry to view, edit or delete it.
+Log → Bowel → choose a shape → Save. More details adds effort, symptoms, severity, pain location, time and an optional note. New and edit use the same form. Warning signs stop the flow without saving.
 
-The backend SQLite database is the source of truth. Failed writes retain the form and show an error; success gives brief feedback. No offline write queue or user accounts are implemented. Selected warning signs pause the form without saving.
+The backend SQLite database is the source of truth. Failed writes retain the form and show an error; success gives brief feedback. No offline write queue or user accounts are implemented.
+
+## Shared Diary
+
+`src/screens/DiaryScreen.js` and `src/features/diary/` own one timeline for Food, Bowel and Drinks. Entries use local dates and ascending times; food without a time appears last. Tap a record for shared details, Edit or Delete. New records return to Today; edits return to the record's date in Diary. The Diary `+` and bottom Log use the same menu.
+
+One owner maintains shared Diary/navigation. Feature owners maintain their forms and API routes. Add new record types through the diary model and API client; do not add separate feature lists or forms to Diary. Old food/drinks preview components remain for compatibility.
 
 **Profile → Developer tools** opens API connection tests and the UI component preview. The preview supports light/dark/system appearance and control states.
 
@@ -46,9 +52,9 @@ In `mobile`, copy `.env.example` to `.env.local`, then reload the app. `EXPO_PUB
 
 On a physical phone, use your computer's LAN IP (same Wi-Fi) or the deployed HTTPS API address. `localhost` on a phone points to the phone. For a LAN browser, add its full origin to backend `CORS_ORIGINS`; see the [backend README](../backend/README.md).
 
-Developer tools → Test connection reads `/api/health` and `/api/diary`. It shows actual success or failure; it does not write records. The diary response currently uses `id`, `date`, `water` and `symptoms`, with values preserved as returned by the server.
+Developer tools → Test connection reads `/api/health`, `/api/bowel`, `/api/food` and `/api/drinks`, showing each result and record count. There is no `/api/diary` endpoint; the mobile app builds the timeline from feature endpoints.
 
-Bowel logging uses `/api/bowel` CRUD separately; its fields and status codes are in the [backend README](../backend/README.md). Times are sent in UTC and shown in the device's local time.
+Use the shared client in `src/data/api`; it adds `/api` to the configured base origin. Contracts are in the [backend README](../backend/README.md). Bowel/drink timestamps use UTC; the app displays local time. Food keeps its local date and optional time.
 
 ## UI rules
 

@@ -4,18 +4,27 @@ const { clientModule } = require('./modules.cjs');
 
 test('reads current API routes and preserves server values', async () => {
   const { createApiClient } = await clientModule;
-  const entries = [{ id: 1, date: '2026-10-05', water: 2, symptoms: 'Bloating' }, { id: 2, date: '2026-10-04', water: null, symptoms: null }];
+  const food = [{ id: 1, food_name: 'Oatmeal', meal_type: 'Breakfast', date: '2026-10-05', time: '08:30', notes: null }];
+  const drinks = [{ id: 1, amount_ml: 250, drink_type: 'water', logged_at: '2026-10-05T07:30:00.000Z', local_date: '2026-10-05', note: null }];
+  const responses = {
+    '/api/health': { status: 'ok', message: 'Ready' },
+    '/api/bowel': [],
+    '/api/food': food,
+    '/api/drinks': drinks,
+  };
   const calls = [];
   const api = createApiClient({
     baseUrl: ' https://api.example.test/ ',
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
-      return Response.json(url.endsWith('/api/health') ? { status: 'ok', message: 'Ready' } : entries);
+      return Response.json(responses[new URL(url).pathname]);
     },
   });
   assert.deepEqual(await api.getHealth(), { status: 'ok', message: 'Ready' });
-  assert.deepEqual(await api.getDiary(), entries);
-  assert.deepEqual(calls.map(({ url }) => url), ['https://api.example.test/api/health', 'https://api.example.test/api/diary']);
+  assert.deepEqual(await api.listBowel(), []);
+  assert.deepEqual(await api.listFood(), food);
+  assert.deepEqual(await api.listDrinks(), drinks);
+  assert.deepEqual(calls.map(({ url }) => url), ['https://api.example.test/api/health', 'https://api.example.test/api/bowel', 'https://api.example.test/api/food', 'https://api.example.test/api/drinks']);
   assert.ok(calls.every(({ options }) => options.method === 'GET' && options.headers.Accept === 'application/json' && options.signal instanceof AbortSignal));
 });
 
@@ -39,8 +48,8 @@ test('rejects network, HTTP, invalid JSON and malformed endpoint responses', asy
     const api = createApiClient({ baseUrl: 'https://api.example.test', fetchImpl });
     await assert.rejects(api.getHealth(), { code });
   }
-  const api = createApiClient({ baseUrl: 'https://api.example.test', fetchImpl: async () => Response.json([{ id: 1, date: '2026-10-05', water: '2', symptoms: null }]) });
-  await assert.rejects(api.getDiary(), { code: 'response' });
+  const api = createApiClient({ baseUrl: 'https://api.example.test', fetchImpl: async () => Response.json([{ id: 1, food_name: 2, date: '2026-10-05' }]) });
+  await assert.rejects(api.listFood(), { code: 'response' });
 });
 
 test('timeout and caller cancellation abort pending requests', async () => {
@@ -53,7 +62,7 @@ test('timeout and caller cancellation abort pending requests', async () => {
       return new Promise(() => {});
     },
   });
-  await assert.rejects(api.getDiary(), { code: 'timeout' });
+  await assert.rejects(api.listFood(), { code: 'timeout' });
   assert.equal(requestSignal.aborted, true);
 
   const controller = new AbortController();

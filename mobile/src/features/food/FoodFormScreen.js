@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -14,7 +14,8 @@ import {
 } from '../../design-system';
 
 import { createFood, listFood, updateFood } from '../../data/api';
-import { FoodDiarySection } from './FoodDiarySection';
+import { useRecordFeedback } from '../../navigation/RecordFeedbackProvider';
+import { useWriteGuard } from '../../navigation/useWriteGuard';
 
 /** @typedef {{id:number,food_name:string,meal_type:string|null,date:string,time:string|null,notes:string|null}} FoodRecord */
 
@@ -45,11 +46,12 @@ export function FoodFormScreen() {
   const theme = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { notify } = useRecordFeedback();
 
   const editParam = typeof params.edit === 'string' ? params.edit : '';
 
   const [foodName, setFoodName] = useState('');
-  const [mealType, setMealType] = useState('Breakfast');
+  const [mealType, setMealType] = useState(/** @type {string|null} */ ('Breakfast'));
   const [date, setDate] = useState(today());
   const [time, setTime] = useState(currentTime());
   const [notes, setNotes] = useState('');
@@ -59,46 +61,49 @@ export function FoodFormScreen() {
   );
 
   const [saving, setSaving] = useState(false);
-  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(Boolean(editParam));
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [recordDate, setRecordDate] = useState(today());
+  const writing = useRef(false);
+  useWriteGuard(saving, writing);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
-  const editing = editingId !== null;
+  const editing = editParam !== '';
+  const exit = () => {
+    if (writing.current) return;
+    if (editing) router.dismissTo({ pathname: '/diary', params: { date: recordDate } });
+    else router.dismissTo('/');
+  };
 
   /** @param {FoodRecord} record */
   function startEditing(record) {
     setEditingId(record.id);
     setFoodName(record.food_name);
-    setMealType(record.meal_type || 'Breakfast');
+    setMealType(record.meal_type);
     setDate(record.date);
-    setTime(record.time || currentTime());
+    setTime(record.time || '');
     setNotes(record.notes || '');
+    setRecordDate(record.date);
     setError('');
-    setMessage('');
-  }
-
-  function resetForm() {
-    setEditingId(null);
-    setFoodName('');
-    setMealType('Breakfast');
-    setNotes('');
-    setError('');
-    setTime(currentTime());
   }
 
   // Support opening the form from Diary with /food?edit=123
   useEffect(() => {
     if (!editParam) return;
 
-    let active = true;
+    const controller = new AbortController();
 
     async function loadEntry() {
       setLoadingEdit(true);
-      setError('');
+      setLoadError('');
+      setEditingId(null);
 
       try {
-        const records = await listFood();
+        if (!/^[1-9]\d*$/.test(editParam) || !Number.isSafeInteger(Number(editParam))) throw new Error('Food entry not found.');
+        const records = await listFood({ signal: controller.signal });
         const record = records.find(
           (item) => item.id === Number(editParam)
         );
@@ -107,24 +112,24 @@ export function FoodFormScreen() {
           throw new Error('Food entry not found.');
         }
 
-        if (active) startEditing(record);
+        if (!controller.signal.aborted) startEditing(record);
       } catch (failure) {
-        if (active) setError(errorMessage(failure));
+        if (!controller.signal.aborted) setLoadError(errorMessage(failure));
       } finally {
-        if (active) setLoadingEdit(false);
+        if (!controller.signal.aborted) setLoadingEdit(false);
       }
     }
 
     void loadEntry();
 
     return () => {
-      active = false;
+      controller.abort();
     };
-  }, [editParam]);
+  }, [editParam, loadAttempt]);
 
   async function handleSave() {
+    if (writing.current || (editing && (loadingEdit || loadError !== '' || editingId === null))) return;
     setError('');
-    setMessage('');
 
     if (!foodName.trim()) {
       setError('Please enter a food name.');
@@ -144,7 +149,7 @@ export function FoodFormScreen() {
       return;
     }
 
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    if (time !== '' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
         setError('Enter a valid time in HH:MM format.');
         return;
     }
@@ -153,11 +158,12 @@ export function FoodFormScreen() {
         foodName: foodName.trim(),
         mealType,
         date,
-        time,
+        time: time || null,
         notes: notes.trim(),
     };
 
 
+    writing.current = true;
     setSaving(true);
 
     try {
@@ -167,23 +173,16 @@ export function FoodFormScreen() {
         await createFood(food);
       }
 
-      const wasEditing = editingId !== null;
-
-      resetForm();
-      setReloadKey((value) => value + 1);
-
-      if (editParam) {
-        router.back();
-        return;
+      if (mounted.current) {
+        notify(editing ? 'Changes saved' : 'Food entry saved');
+        if (editing) router.dismissTo({ pathname: '/diary', params: { date } });
+        else router.dismissTo('/');
       }
-
-      setMessage(
-        wasEditing ? 'Food entry updated.' : 'Food entry saved.'
-      );
     } catch (failure) {
-      setError(errorMessage(failure));
+      if (mounted.current) setError(errorMessage(failure));
     } finally {
-      setSaving(false);
+      writing.current = false;
+      if (mounted.current) setSaving(false);
     }
   }
 
@@ -201,11 +200,14 @@ export function FoodFormScreen() {
   return (
     <Screen
       title={editing ? 'Edit food' : 'Log food'}
-      subtitle="Record what you ate"
-      onBack={() => router.back()}
+      onBack={exit}
       testID="food-form"
     >
-      {loadingEdit ? (
+      {editing && (loadingEdit || editingId === null) ? (
+        loadError !== '' ? <>
+          <AppText tone="danger" accessibilityLiveRegion="polite">{loadError}</AppText>
+          <Button label="Retry" variant="secondary" onPress={() => setLoadAttempt((value) => value + 1)} />
+        </> :
         <AppText tone="secondary">Loading food entry...</AppText>
       ) : (
         <>
@@ -221,6 +223,7 @@ export function FoodFormScreen() {
               accessibilityLabel="Food name"
               testID="food-name"
               maxLength={150}
+              editable={!saving}
             />
           </Card>
 
@@ -234,6 +237,7 @@ export function FoodFormScreen() {
                   label={meal}
                   selected={mealType === meal}
                   onPress={() => setMealType(meal)}
+                  disabled={saving}
                 />
               ))}
             </View>
@@ -251,6 +255,7 @@ export function FoodFormScreen() {
               accessibilityLabel="Food date"
               testID="food-date"
               maxLength={10}
+              editable={!saving}
             />
           </Card>
               
@@ -268,6 +273,7 @@ export function FoodFormScreen() {
                 testID="food-time"
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
+                editable={!saving}
             />
             </Card>
 
@@ -279,15 +285,12 @@ export function FoodFormScreen() {
               value={notes}
               onChange={setNotes}
               testID="food-notes"
+              disabled={saving}
             />
           </Card>
 
           {error !== '' && (
             <AppText tone="danger">{error}</AppText>
-          )}
-
-          {message !== '' && (
-            <AppText>{message}</AppText>
           )}
 
           <Button
@@ -298,21 +301,6 @@ export function FoodFormScreen() {
             testID="food-save"
           />
 
-          {editing && !editParam && (
-            <Button
-              label="Cancel editing"
-              variant="secondary"
-              onPress={resetForm}
-              disabled={saving}
-            />
-          )}
-
-          {/* Temporary history until shared Diary is integrated */}
-          <FoodDiarySection
-            date={date}
-            reloadKey={reloadKey}
-            onEdit={startEditing}
-          />
         </>
       )}
     </Screen>

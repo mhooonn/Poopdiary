@@ -1,7 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, useTheme } from '../../design-system';
+import { useRecordFeedback } from '../../navigation/RecordFeedbackProvider';
 import { createBowel, deleteBowel, getBowel, listBowel, updateBowel } from '../../data/api';
 import { bowelError } from './errors';
 
@@ -12,21 +10,14 @@ const Context = createContext(/** @type {BowelState|null} */ (null));
 
 /** @param {{children:import('react').ReactNode}} props */
 export function BowelProvider({ children }) {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const { notify } = useRecordFeedback();
   const [records, setRecords] = useState(/** @type {BowelRecord[]} */ ([]));
   const [status, setStatus] = useState(/** @type {BowelState['status']} */ ('idle'));
   const [error, setError] = useState('');
-  const [feedback, setFeedback] = useState('');
   const revision = useRef(0);
   const request = useRef(/** @type {AbortController|null} */ (null));
 
   useEffect(() => () => request.current?.abort(), []);
-  useEffect(() => {
-    if (!feedback) return;
-    const timer = setTimeout(() => setFeedback(''), 2400);
-    return () => clearTimeout(timer);
-  }, [feedback]);
 
   const refresh = useCallback(async () => {
     request.current?.abort();
@@ -68,16 +59,8 @@ export function BowelProvider({ children }) {
     setError('');
   }, []);
 
-  return <Context.Provider value={{ records, status, error, refresh, get: getBowel, save, remove, notify: setFeedback }}>
+  return <Context.Provider value={{ records, status, error, refresh, get: getBowel, save, remove, notify }}>
     {children}
-    {feedback !== '' && <View pointerEvents="none" role="status" accessibilityLiveRegion="polite" testID="bowel-feedback"
-      style={{ position: 'absolute', top: insets.top + theme.spacing.lg, left: theme.spacing.md, right: theme.spacing.md, alignItems: 'center' }}>
-      <View style={{ maxWidth: theme.controls.contentWidth, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
-        borderRadius: theme.radius.md, backgroundColor: theme.colors.feedback.success.bg,
-        borderColor: theme.colors.feedback.success.fg, borderWidth: theme.controls.borderWidth }}>
-        <AppText variant="label" style={{ color: theme.colors.feedback.success.fg }}>{feedback}</AppText>
-      </View>
-    </View>}
   </Context.Provider>;
 }
 
