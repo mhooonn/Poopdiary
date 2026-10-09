@@ -3,13 +3,18 @@ const router = express.Router();
 const db = require("../database/db");
 
 router.get("/", (req, res) => {
-    db.all("SELECT * FROM drinks", [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                error: err.message
-            });
-        }
+    const { date } = req.query;
 
+    // Jos ?date=... on annettu, suodatetaan päivän mukaan. Muuten palautetaan kaikki.
+    const sql = date
+        ? "SELECT * FROM drinks WHERE local_date = ? ORDER BY logged_at"
+        : "SELECT * FROM drinks ORDER BY logged_at";
+    const params = date ? [date] : [];
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
         res.json(rows);
     });
 });
@@ -98,6 +103,23 @@ router.delete("/:id", (req, res) => {
             return res.status(404).json({ error: "drink not found" });
         }
         res.status(204).end();
+    });
+});
+
+router.get("/:id", (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+        return res.status(400).json({ error: "invalid id" });
+    }
+
+    db.get("SELECT * FROM drinks WHERE id = ?", [id], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (!row) {
+            return res.status(404).json({ error: "drink not found" });
+        }
+        res.json(row);
     });
 });
 
