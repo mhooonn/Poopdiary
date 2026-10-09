@@ -24,10 +24,28 @@ db.serialize(() => {
             food_name TEXT NOT NULL,
             meal_type TEXT,
             date TEXT NOT NULL,
+            time TEXT,
             notes TEXT
         )
     `);
 
+});
+
+
+// Add time column to existing databases if it is missing
+db.all("PRAGMA table_info(food)", [], (err, columns) => {
+    if (err) {
+         console.error("Could not inspect food table:", err);
+        return;
+    }
+
+    if (!columns.some((column) => column.name === "time")) {
+        db.run("ALTER TABLE food ADD COLUMN time TEXT", (error) => {
+            if (error) {
+                console.error("Could not add time column:", error);
+            }
+        });
+    }
 });
 
 db.ready = migrateBowel(db);

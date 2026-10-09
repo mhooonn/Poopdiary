@@ -1,7 +1,9 @@
+
 const express = require("express");
 const router = express.Router();
 const db = require("../database/db");
 
+// GET all food entries
 router.get("/", (req, res) => {
     db.all("SELECT * FROM food", [], (err, rows) => {
         if (err) {
@@ -14,8 +16,9 @@ router.get("/", (req, res) => {
     });
 });
 
+// POST new food entry
 router.post("/", (req, res) => {
-    const { foodName, mealType, date, notes } = req.body;
+    const { foodName, mealType, date, time = null, notes } = req.body;
 
     if (!foodName || !date) {
         return res.status(400).json({
@@ -23,31 +26,43 @@ router.post("/", (req, res) => {
         });
     }
 
+    if (time !== null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+        return res.status(400).json({
+            error: "Time must be in HH:MM format"
+        });
+    }
+
     const sql = `
-        INSERT INTO food (food_name, meal_type, date, notes)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO food (food_name, meal_type, date, time, notes)
+        VALUES (?, ?, ?, ?, ?)
     `;
 
-    db.run(sql, [foodName, mealType, date, notes], function (err) {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({
-                error: "Could not add food entry"
+    db.run(
+        sql,
+        [foodName, mealType, date, time, notes ?? null],
+        function (err) {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: "Could not add food entry"
+                });
+            }
+
+            res.status(201).json({
+                id: this.lastID,
+                foodName,
+                mealType,
+                date,
+                time,
+                notes: notes ?? null
             });
         }
-
-        res.status(201).json({
-            id: this.lastID,
-            foodName,
-            mealType,
-            date,
-            notes
-        });
-    });
+    );
 });
 
+// PUT update food entry
 router.put("/:id", (req, res) => {
-    const { foodName, mealType, date, notes } = req.body;
+    const { foodName, mealType, date, time = null, notes } = req.body;
     const { id } = req.params;
 
     if (!foodName || !date) {
@@ -56,36 +71,48 @@ router.put("/:id", (req, res) => {
         });
     }
 
+    if (time !== null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+        return res.status(400).json({
+            error: "Time must be in HH:MM format"
+        });
+    }
+
     const sql = `
         UPDATE food
-        SET food_name = ?, meal_type = ?, date = ?, notes = ?
+        SET food_name = ?, meal_type = ?, date = ?, time = ?, notes = ?
         WHERE id = ?
     `;
 
-    db.run(sql, [foodName, mealType, date, notes, id], function (err) {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({
-                error: "Could not update food entry"
+    db.run(
+        sql,
+        [foodName, mealType, date, time, notes ?? null, id],
+        function (err) {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: "Could not update food entry"
+                });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).json({
+                    error: "Food entry not found"
+                });
+            }
+
+            res.json({
+                id: Number(id),
+                foodName,
+                mealType,
+                date,
+                time,
+                notes: notes ?? null
             });
         }
-
-        if (this.changes === 0) {
-            return res.status(404).json({
-                error: "Food entry not found"
-            });
-        }
-
-        res.json({
-        id: Number(id),
-        foodName,
-        mealType,
-        date,
-        notes
-        });
-    });
+    );
 });
 
+// DELETE food entry
 router.delete("/:id", (req, res) => {
     const { id } = req.params;
 
