@@ -2,7 +2,11 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const moduleUrl = (source) => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
-const modelUrl = fs.readFile(path.join(__dirname, '../src/features/bowel/model.js'), 'utf8').then(moduleUrl);
+const dateTimeUrl = fs.readFile(path.join(__dirname, '../src/shared/dateTime.js'), 'utf8').then(moduleUrl);
+const modelUrl = Promise.all([
+  fs.readFile(path.join(__dirname, '../src/features/bowel/model.js'), 'utf8'),
+  dateTimeUrl,
+]).then(([source, url]) => moduleUrl(source.replaceAll("from '../../shared/dateTime'", `from '${url}'`)));
 
 exports.modelModule = modelUrl.then((url) => import(url));
 exports.clientModule = Promise.all([

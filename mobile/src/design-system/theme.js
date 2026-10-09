@@ -34,6 +34,13 @@ const shared = {
     borderWidth: 1,
     selectedBorderWidth: 2,
     contentWidth: 600,
+    fieldSupportingLines: 2,
+    quickLogMinHeight: 88,
+    quickLogCompactMinHeight: 80,
+    quickLogIconBadge: 32,
+    metricMinHeight: 96,
+    metricIconBadge: 24,
+    progressHeight: 10,
   },
   motion: { fast: 120, normal: 180 },
   navigation: {

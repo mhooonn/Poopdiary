@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, View, useWindowDimensions } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
-import { AlertTriangle, Clock3, X } from 'lucide-react-native';
-import { AppText, Button, Card, Choice, IconButton, NoteField, Screen, Sheet, Slider, useTheme } from '../../design-system';
+import { AlertTriangle, X } from 'lucide-react-native';
+import { AppText, Button, Card, Choice, DateTimeField, DateTimeSheet, IconButton, NoteField, Screen, Sheet, Slider, useTheme } from '../../design-system';
 import { useBack } from '../../navigation/useBack';
 import { getBowel } from '../../data/api';
 import { useBowel } from './BowelProvider';
 import { bowelError } from './errors';
 import { adjacentStep, createForm, createPayload, detailSteps, EFFORTS, LEVELS, PAIN_LOCATIONS, STOOL_TYPES, SYMPTOMS, toggleSymptom } from './model';
-import { DateTimeSheet } from './components/DateTimeSheet';
 import { SafetyStop, WARNING_SIGNS } from './components/SafetyStop';
 import { StoolShape } from './components/StoolShape';
 
@@ -115,7 +114,6 @@ function BowelEditorForm({ record }) {
   const headings = { shape: 'Stool shape', effort: 'How did it feel?', symptoms: 'Other symptoms', bloating: 'Bloating', pain: 'Abdominal pain', urgency: 'Urgency', time: 'Date & time' };
   const shape = STOOL_TYPES.find((option) => option.code === form.stoolType);
   const stepCount = ['shape', 'effort', 'symptoms', ...detailSteps(form.symptoms), 'time'];
-  const timeLabel = `${new Date(`${form.date}T12:00:00`).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} · ${form.time}`;
 
   return <Screen key={step} title={record ? 'Edit bowel' : 'Bowel'} onBack={back} testID="bowel-editor"
     right={step !== 'shape' ? <IconButton icon={X} label="Close editor" onPress={exit} disabled={saving} /> : undefined}
@@ -142,7 +140,7 @@ function BowelEditorForm({ record }) {
             selected={form.stoolType === null} onPress={() => patch({ stoolType: null })} disabled={saving}
             style={{ minHeight: theme.controls.bowelTileHeight, height: '100%' }} testID="bowel-type-unknown" /></View>
         </View>
-        <Button label={timeLabel} variant="secondary" icon={<Clock3 size={theme.controls.icon} color={theme.colors.text.primary} />} onPress={() => setSheet('time')} disabled={saving} testID="bowel-time" />
+        <DateTimeField date={form.date} time={form.time} onPress={() => setSheet('time')} disabled={saving} testID="bowel-time" />
         <Button label="Shape guide" variant="text" onPress={() => setSheet('guide')} disabled={saving} />
         <Button label="Blood, black stool or severe discomfort?" variant="secondary" icon={<AlertTriangle size={theme.controls.icon} color={theme.colors.text.primary} />} onPress={() => setSheet('safety')} disabled={saving} testID="bowel-warning-signs" />
       </>}
@@ -173,12 +171,12 @@ function BowelEditorForm({ record }) {
         </View>
       </>}
       {step === 'time' && <>
-        <Button label={timeLabel} variant="secondary" onPress={() => setSheet('time')} disabled={saving} testID="bowel-time" />
+        <DateTimeField date={form.date} time={form.time} onPress={() => setSheet('time')} disabled={saving} testID="bowel-time" />
         <Button label={showNote ? 'Hide note' : 'Add a note'} variant="text" onPress={() => setShowNote(!showNote)} expanded={showNote} disabled={saving} />
         {showNote && <NoteField value={form.notes} onChange={(notes) => patch({ notes })} disabled={saving} testID="bowel-note" />}
       </>}
     </View>
-    <DateTimeSheet visible={sheet === 'time'} date={form.date} time={form.time} onClose={() => setSheet(null)} onApply={(date, time) => { patch({ date, time }); setSheet(null); }} />
+    <DateTimeSheet testIDPrefix="bowel" visible={sheet === 'time'} date={form.date} time={form.time} onClose={() => setSheet(null)} onApply={(date, time) => { patch({ date, time }); setSheet(null); }} />
     <Sheet visible={sheet === 'guide'} title="Shape guide" onClose={() => setSheet(null)}>
       {STOOL_TYPES.filter((option) => option.code !== null).map((option) => <Choice key={option.code} label={`Type ${option.code} · ${option.label}`} description={option.description} icon={<StoolShape type={option.code} />}
         selected={form.stoolType === option.code} onPress={() => { patch({ stoolType: option.code }); setSheet(null); }} />)}

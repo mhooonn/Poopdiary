@@ -39,6 +39,12 @@ One owner maintains shared Diary/navigation. Feature owners maintain their forms
 
 **Profile → Developer tools** opens API connection tests and the UI component preview. The preview supports light/dark/system appearance and control states.
 
+## Shared components
+
+Import controls from `src/design-system`; change visual values in `theme.js`. The [component guide](src/design-system/README.md) has examples. `ComponentsScreen.js` is a working reference; nothing in the preview saves records.
+
+Use `DateTimeField` + `DateTimeSheet` for record timestamps. Bowel already uses them. Food can use `allowNoTime`; Drinks needs its PUT contract updated before users can edit its timestamp.
+
 ## API connection
 
 Start the API in a separate terminal from `backend`:

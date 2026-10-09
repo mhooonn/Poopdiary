@@ -1,3 +1,6 @@
+import { formatDate, formatTime } from '../../shared/dateTime';
+export { formatDate, formatTime, daysInMonth, updateDatePart } from '../../shared/dateTime';
+
 /** @typedef {1 | 2 | 3 | 4 | 5 | 6 | 7} StoolType */
 /** @typedef {'easy' | 'normal' | 'some_difficulty' | 'difficult'} Effort */
 /** @typedef {'bloating' | 'pain' | 'nausea' | 'urgency' | 'other'} Symptom */
@@ -53,37 +56,6 @@ export const PAIN_LOCATIONS = [
   { code: 'lower_right', label: 'Lower right' },
   { code: 'whole', label: 'Whole abdomen' },
 ];
-
-/** @param {number} value */
-const pad = (value) => String(value).padStart(2, '0');
-
-/** @param {Date} date */
-export function formatDate(date) {
-  return `${String(date.getFullYear()).padStart(4, '0')}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-/** @param {Date} date */
-export function formatTime(date) {
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-/** @param {number} year @param {number} month Month from 1 to 12. */
-export function daysInMonth(year, month) {
-  const date = new Date(0);
-  date.setUTCFullYear(year, month, 0);
-  return date.getUTCDate();
-}
-
-/** @param {string} date @param {'year'|'month'|'day'} part @param {number} value */
-export function updateDatePart(date, part, value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isInteger(value)) throw new Error('Choose a valid date.');
-  let [year, month, day] = date.split('-').map(Number);
-  if (part === 'year') year = value;
-  if (part === 'month') month = value;
-  if (part === 'day') day = value;
-  if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1) throw new Error('Choose a valid date.');
-  return `${String(year).padStart(4, '0')}-${pad(month)}-${pad(Math.min(day, daysInMonth(year, month)))}`;
-}
 
 /** @param {BowelRecord} [record] @param {Date} [now] @returns {BowelForm} */
 export function createForm(record, now = new Date()) {
