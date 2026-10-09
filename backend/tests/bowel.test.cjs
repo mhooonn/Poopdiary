@@ -88,7 +88,7 @@ test("bowel API uses a real isolated SQLite database", async (t) => {
             const health = await fetch(`${server.baseUrl}/api/health`);
             assert.equal((await health.json()).status, "ok");
             assert.equal((await fetch(`${server.baseUrl}/api/food`)).status, 200);
-            assert.equal((await fetch(`${server.baseUrl}/api/diary`)).status, 200);
+            assert.equal((await fetch(`${server.baseUrl}/api/drinks`)).status, 200);
         });
         await t.test("create, list and single-record reads preserve the data", async () => {
             const response = await request(server, "", "POST", fullEntry);
