@@ -9,3 +9,8 @@ exports.clientModule = Promise.all([
   fs.readFile(path.join(__dirname, '../src/data/api/client.js'), 'utf8'),
   modelUrl,
 ]).then(([source, url]) => import(moduleUrl(source.replace("from '../../features/bowel/model'", `from '${url}'`))));
+
+exports.diaryModelModule = Promise.all([
+  fs.readFile(path.join(__dirname, '../src/features/diary/model.js'), 'utf8'),
+  modelUrl,
+]).then(([source, url]) => import(moduleUrl(source.replace("from '../bowel/model'", `from '${url}'`))));

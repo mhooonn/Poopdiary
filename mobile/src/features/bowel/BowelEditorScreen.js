@@ -15,7 +15,7 @@ import { StoolShape } from './components/StoolShape';
 /** @param {{id?:string}} props */
 export function BowelEditorScreen({ id }) {
   const theme = useTheme();
-  const back = useBack('/diary');
+  const back = useBack(id ? '/diary' : '/');
   const [record, setRecord] = useState(/** @type {import('./model').BowelRecord|undefined} */ (undefined));
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -60,15 +60,19 @@ function BowelEditorForm({ record }) {
   const [gridWidth, setGridWidth] = useState(Math.min(width, theme.controls.contentWidth) - theme.spacing.md * 2);
   const writing = useRef(false);
   const mounted = useRef(true);
+  const exit = useCallback(() => {
+    if (writing.current) return;
+    if (record) router.dismissTo({ pathname: '/diary', params: { date: createForm(record).date } });
+    else router.dismissTo('/');
+  }, [record, router]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const back = useCallback(() => {
     if (writing.current) return;
     if (warning) { setWarning(null); return; }
     const previous = adjacentStep(step, form, 'previous');
     if (previous) setStep(previous);
-    else if (router.canGoBack()) router.back();
-    else router.replace('/diary');
-  }, [form, step, warning, router]);
+    else exit();
+  }, [form, step, warning, exit]);
   useEffect(() => {
     // The native gesture leaves the route; later questions use in-flow Back.
     navigation.setOptions({ gestureEnabled: step === 'shape' && !saving && !warning && sheet === null });
@@ -85,7 +89,8 @@ function BowelEditorForm({ record }) {
       const saved = await save(createPayload(form, record), record?.id);
       if (mounted.current) {
         notify(record ? 'Changes saved' : 'Bowel record saved');
-        router.dismissTo({ pathname: '/diary', params: { date: createForm(saved).date } });
+        if (record) router.dismissTo({ pathname: '/diary', params: { date: createForm(saved).date } });
+        else router.dismissTo('/');
       }
     } catch (failure) {
       if (mounted.current) setError(bowelError(failure, 'save'));
@@ -113,7 +118,7 @@ function BowelEditorForm({ record }) {
   const timeLabel = `${new Date(`${form.date}T12:00:00`).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })} · ${form.time}`;
 
   return <Screen key={step} title={record ? 'Edit bowel' : 'Bowel'} onBack={back} testID="bowel-editor"
-    right={step !== 'shape' ? <IconButton icon={X} label="Close editor" onPress={() => { if (!writing.current) router.dismissTo('/diary'); }} disabled={saving} /> : undefined}
+    right={step !== 'shape' ? <IconButton icon={X} label="Close editor" onPress={exit} disabled={saving} /> : undefined}
     footer={<View style={{ gap: theme.spacing.sm }}>
       {error !== '' && <AppText tone="danger" accessibilityLiveRegion="assertive" testID="bowel-save-error">{error}</AppText>}
       <Button label={finalStep ? (record ? 'Save changes' : 'Save') : 'Continue'} onPress={() => { if (finalStep) void persist(); else continueFlow(); }}

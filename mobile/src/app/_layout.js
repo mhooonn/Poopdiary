@@ -4,6 +4,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvide
 
 import { ThemeProvider, useReducedMotion, useTheme } from '../design-system';
 import { BowelProvider } from '../features/bowel/BowelProvider';
+import { RecordFeedbackProvider } from '../navigation/RecordFeedbackProvider';
 
 export const unstable_settings = { initialRouteName: '(tabs)' };
 
@@ -26,5 +27,5 @@ function Navigation() {
 }
 
 export default function RootLayout() {
-  return <SafeAreaProvider><ThemeProvider><BowelProvider><Navigation /></BowelProvider></ThemeProvider></SafeAreaProvider>;
+  return <SafeAreaProvider><ThemeProvider><RecordFeedbackProvider><BowelProvider><Navigation /></BowelProvider></RecordFeedbackProvider></ThemeProvider></SafeAreaProvider>;
 }

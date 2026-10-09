@@ -17,6 +17,7 @@ import { deleteFood, listFood } from '../../data/api';
 /** @typedef {{id:number,food_name:string,meal_type:string|null,date:string,time:string|null,notes:string|null}} FoodRecord */
 
 /**
+ * Food-only compatibility preview; the shared Diary owns the main timeline.
  * @param {{
  *   date: string,
  *   reloadKey?: number,
@@ -52,6 +53,9 @@ export function FoodDiarySection({
   // Reload when the screen gains focus or an entry is saved.
   useFocusEffect(
     useCallback(() => {
+      // These keys trigger a fresh load after a save or retry.
+      void reloadKey;
+      void retryKey;
       let active = true;
 
       async function load() {
