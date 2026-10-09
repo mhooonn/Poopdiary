@@ -77,11 +77,11 @@ router.put("/:id", (req, res) => {
         }
 
         res.json({
-            id,
-            foodName,
-            mealType,
-            date,
-            notes
+        id: Number(id),
+        foodName,
+        mealType,
+        date,
+        notes
         });
     });
 });
