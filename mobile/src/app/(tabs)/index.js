@@ -1,2 +1,2 @@
-import { BlankScreen } from '../../navigation/BlankScreen';
-export default function TodayRoute() { return <BlankScreen title="Today" />; }
+import { TodayScreen } from '../../screens/TodayScreen';
+export default function TodayRoute() { return <TodayScreen />; }
