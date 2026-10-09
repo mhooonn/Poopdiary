@@ -14,7 +14,7 @@ import {
 
 import { deleteFood, listFood } from '../../data/api';
 
-/** @typedef {{id:number,food_name:string,meal_type:string|null,date:string,notes:string|null}} FoodRecord */
+/** @typedef {{id:number,food_name:string,meal_type:string|null,date:string,time:string|null,notes:string|null}} FoodRecord */
 
 /**
  * @param {{
@@ -85,7 +85,11 @@ export function FoodDiarySection({
     }, [reloadKey, retryKey])
   );
 
-  const entries = records.filter((record) => record.date === date);
+    const entries = records
+        .filter((record) => record.date === date)
+        .sort((a, b) =>
+            (a.time || '99:99').localeCompare(b.time || '99:99')
+    );
   const selected = records.find((record) => record.id === selectedId);
 
   function closeDetails() {
@@ -234,6 +238,10 @@ export function FoodDiarySection({
               <AppText tone="secondary">
                 {record.food_name}
               </AppText>
+
+                <AppText variant="caption" tone="secondary">
+                    {record.time || 'Time not recorded'}
+                </AppText>
 
               {record.notes ? (
                 <AppText variant="caption" tone="secondary">

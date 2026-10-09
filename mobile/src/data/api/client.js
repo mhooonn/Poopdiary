@@ -1,6 +1,7 @@
 import { isBowelDraft, isBowelRecord, isUtcTimestamp } from '../../features/bowel/model';
 
 
+
 /** @typedef {import('../../features/bowel/model').BowelDraft} BowelDraft */
 /** @typedef {import('../../features/bowel/model').BowelRecord} BowelRecord */
 /** @typedef {'configuration' | 'network' | 'timeout' | 'http' | 'response' | 'cancelled' | 'validation'} ApiErrorCode */
@@ -9,13 +10,17 @@ import { isBowelDraft, isBowelRecord, isUtcTimestamp } from '../../features/bowe
 /** @typedef {{signal?: AbortSignal}} RequestOptions */
 /** @typedef {RequestOptions & {from?:string, to?:string}} ListBowelOptions */
 
+// Food types
+/** @typedef {{id: number, food_name: string, meal_type: string | null, date: string, time: string | null, notes: string | null}} FoodRecord */
+
+/** @typedef {{id: number, foodName: string, mealType?: string | null, date: string, time?: string | null, notes?: string | null}} FoodResponse */
+
+/** @typedef {{foodName: string, mealType?: string, date: string, time?: string | null, notes?: string}} FoodDraft */
+
+/** @typedef {{message: string}} FoodDeleteResponse */
+
 /** @typedef {RequestOptions & {method?:'GET'|'POST'|'PUT'|'DELETE', body?:BowelDraft | FoodDraft, empty?:boolean}} ApiRequestOptions */
 
-
-/** @typedef {{id: number, food_name: string, meal_type: string | null, date: string, notes: string | null}} FoodRecord */
-/** @typedef {{id: number, foodName: string, mealType?: string, date: string, notes?: string}} FoodResponse */
-/** @typedef {{foodName: string, mealType?: string, date: string, notes?: string}} FoodDraft */
-/** @typedef {{message: string}} FoodDeleteResponse */
 
 
 
@@ -50,15 +55,18 @@ function isDiary(value) {
 }
 
 
+
 /** @param {unknown} value @returns {value is FoodRecord} */
 function isFoodRecord(value) {
   return isObject(value)
     && Number.isSafeInteger(value.id)
     && typeof value.food_name === 'string'
     && typeof value.date === 'string'
+    && (value.time == null || typeof value.time === 'string')
     && (value.meal_type == null || typeof value.meal_type === 'string')
     && (value.notes == null || typeof value.notes === 'string');
 }
+
 
 /** @param {unknown} value @returns {value is FoodRecord[]} */
 function isFoodList(value) {

@@ -16,7 +16,7 @@ import {
 import { createFood, listFood, updateFood } from '../../data/api';
 import { FoodDiarySection } from './FoodDiarySection';
 
-/** @typedef {{id:number,food_name:string,meal_type:string|null,date:string,notes:string|null}} FoodRecord */
+/** @typedef {{id:number,food_name:string,meal_type:string|null,date:string,time:string|null,notes:string|null}} FoodRecord */
 
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
@@ -26,6 +26,14 @@ function today() {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function currentTime() {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+
+  return `${hours}:${minutes}`;
 }
 
 /** @param {unknown} error */
@@ -43,6 +51,7 @@ export function FoodFormScreen() {
   const [foodName, setFoodName] = useState('');
   const [mealType, setMealType] = useState('Breakfast');
   const [date, setDate] = useState(today());
+  const [time, setTime] = useState(currentTime());
   const [notes, setNotes] = useState('');
 
   const [editingId, setEditingId] = useState(
@@ -63,6 +72,7 @@ export function FoodFormScreen() {
     setFoodName(record.food_name);
     setMealType(record.meal_type || 'Breakfast');
     setDate(record.date);
+    setTime(record.time || currentTime());
     setNotes(record.notes || '');
     setError('');
     setMessage('');
@@ -74,6 +84,7 @@ export function FoodFormScreen() {
     setMealType('Breakfast');
     setNotes('');
     setError('');
+    setTime(currentTime());
   }
 
   // Support opening the form from Diary with /food?edit=123
@@ -133,12 +144,19 @@ export function FoodFormScreen() {
       return;
     }
 
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+        setError('Enter a valid time in HH:MM format.');
+        return;
+    }
+
     const food = {
-      foodName: foodName.trim(),
-      mealType,
-      date,
-      notes: notes.trim(),
+        foodName: foodName.trim(),
+        mealType,
+        date,
+        time,
+        notes: notes.trim(),
     };
+
 
     setSaving(true);
 
@@ -235,6 +253,24 @@ export function FoodFormScreen() {
               maxLength={10}
             />
           </Card>
+              
+              
+            <Card>
+            <AppText variant="label">Time</AppText>
+
+            <TextInput
+                style={inputStyle}
+                value={time}
+                onChangeText={setTime}
+                placeholder="HH:MM (e.g. 12:30)"
+                placeholderTextColor={theme.colors.text.secondary}
+                accessibilityLabel="Food time"
+                testID="food-time"
+                keyboardType="numbers-and-punctuation"
+                maxLength={5}
+            />
+            </Card>
+
 
           <Card>
             <AppText variant="label">Notes (optional)</AppText>
