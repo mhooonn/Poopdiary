@@ -82,3 +82,22 @@ test('timeout includes a stalled response body', async () => {
   });
   await assert.rejects(api.getHealth(), { code: 'timeout' });
 });
+
+test('successful 204 deletes notify record subscribers without surfacing subscriber errors', async () => {
+  const { createApiClient, subscribeRecordChanges } = await clientModule;
+  let changes = 0;
+  const unsubscribe = subscribeRecordChanges(() => { changes += 1; });
+  const unsubscribeBrokenListener = subscribeRecordChanges(() => { throw new Error('listener failure'); });
+  const api = createApiClient({
+    baseUrl: 'https://api.example.test',
+    fetchImpl: async () => new Response(null, { status: 204 }),
+  });
+
+  try {
+    assert.equal(await api.deleteExercise(3), undefined);
+    assert.equal(changes, 1);
+  } finally {
+    unsubscribe();
+    unsubscribeBrokenListener();
+  }
+});

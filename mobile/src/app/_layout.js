@@ -4,6 +4,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvide
 
 import { ThemeProvider, useReducedMotion, useTheme } from '../design-system';
 import { BowelProvider } from '../features/bowel/BowelProvider';
+import { ReminderRuntime } from '../features/reminders/ReminderRuntime';
 import { RecordFeedbackProvider } from '../navigation/RecordFeedbackProvider';
 
 export const unstable_settings = { initialRouteName: '(tabs)' };
@@ -21,6 +22,7 @@ function Navigation() {
     notification: theme.colors.feedback.danger.fg,
   } }}>
     <View style={{ flex: 1, backgroundColor: theme.colors.surface.canvas }}>
+      <ReminderRuntime />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.surface.canvas }, animation: reducedMotion ? 'none' : 'default' }} />
     </View>
   </NavigationThemeProvider>;

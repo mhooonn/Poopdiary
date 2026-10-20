@@ -3,8 +3,10 @@ const path = require('node:path');
 
 const moduleUrl = (source) => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 const modelUrl = fs.readFile(path.join(__dirname, '../src/features/bowel/model.js'), 'utf8').then(moduleUrl);
+const reminderModelUrl = fs.readFile(path.join(__dirname, '../src/features/reminders/model.js'), 'utf8').then(moduleUrl);
 
 exports.modelModule = modelUrl.then((url) => import(url));
+exports.reminderModelModule = reminderModelUrl.then((url) => import(url));
 exports.clientModule = Promise.all([
   fs.readFile(path.join(__dirname, '../src/data/api/client.js'), 'utf8'),
   modelUrl,

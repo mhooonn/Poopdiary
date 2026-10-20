@@ -34,4 +34,4 @@ export const updateExercise = api.updateExercise;
 export const deleteExercise = api.deleteExercise;
 
 
-export { ApiError, createApiClient } from './client';
+export { ApiError, createApiClient, subscribeRecordChanges } from './client';

@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { Bell } from 'lucide-react-native';
 
 import { apiBaseUrl } from '../config/api';
 import { ApiError, getHealth, listBowel, listDrinks, listFood } from '../data/api';
 import { AppText, Button, Card, Screen, useTheme } from '../design-system';
+import { getNotificationDiagnostics, requestNotificationAccess, scheduleTestNotification } from '../features/reminders/service';
 
 /** @typedef {{label:string,path:string,kind:'success'|'error',message?:string,count?:number}} EndpointCheck */
 /** @typedef {{kind:'idle'|'loading'|'success'|'error',message:string,checks?:EndpointCheck[]}} ConnectionState */
@@ -15,8 +17,38 @@ export function DeveloperScreen({ onBack }) {
   const router = useRouter();
   const activeRequest = useRef(/** @type {AbortController | null} */ (null));
   const [connection, setConnection] = useState(/** @type {ConnectionState} */ ({ kind: 'idle', message: 'Not checked' }));
+  const [reminderStatus, setReminderStatus] = useState('Checking notification status…');
+  const [testingReminder, setTestingReminder] = useState(false);
 
   useEffect(() => () => activeRequest.current?.abort(), []);
+
+  useEffect(() => {
+    let active = true;
+    void getNotificationDiagnostics().then((status) => {
+      if (!active) return;
+      setReminderStatus(!status.available
+        ? 'Available on iOS and Android.'
+        : `${status.granted && status.channelEnabled ? 'Allowed' : 'Not allowed'} · ${status.pending} pending`);
+    }).catch(() => { if (active) setReminderStatus('Could not read notification status.'); });
+    return () => { active = false; };
+  }, []);
+
+  async function sendReminderTest() {
+    setTestingReminder(true);
+    try {
+      const access = await requestNotificationAccess();
+      if (!access.granted || !access.channelEnabled) {
+        setReminderStatus('Allow notifications to run the test.');
+        return;
+      }
+      await scheduleTestNotification();
+      setReminderStatus('Test notification scheduled for 5 seconds.');
+    } catch {
+      setReminderStatus('Could not schedule a test notification.');
+    } finally {
+      setTestingReminder(false);
+    }
+  }
 
   async function checkConnection() {
     activeRequest.current?.abort();
@@ -56,6 +88,12 @@ export function DeveloperScreen({ onBack }) {
     <Card>
       <AppText variant="sectionTitle" accessibilityRole="header">UI components</AppText>
       <Button label="Open component preview" variant="secondary" onPress={() => router.push('/dev/components')} testID="open-components" />
+    </Card>
+    <Card testID="reminder-diagnostics">
+      <AppText variant="sectionTitle" accessibilityRole="header">Local notifications</AppText>
+      <AppText variant="caption" tone="secondary" accessibilityLiveRegion="polite">{reminderStatus}</AppText>
+      <Button label="Send test notification" variant="secondary" icon={<Bell size={theme.controls.icon} color={theme.colors.text.primary} />}
+        loading={testingReminder} onPress={() => void sendReminderTest()} testID="send-notification-test" />
     </Card>
     <Card>
       <AppText variant="sectionTitle" accessibilityRole="header">API connection</AppText>

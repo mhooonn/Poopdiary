@@ -1,5 +1,23 @@
 import { isBowelDraft, isBowelRecord, isUtcTimestamp } from '../../features/bowel/model';
 
+const recordChangeListeners = new Set();
+
+/** @param {() => void} listener */
+export function subscribeRecordChanges(listener) {
+  recordChangeListeners.add(listener);
+  return () => recordChangeListeners.delete(listener);
+}
+
+function publishRecordChange() {
+  for (const listener of recordChangeListeners) {
+    try {
+      listener();
+    } catch {
+      // A subscriber must not make a successful API write appear to fail.
+    }
+  }
+}
+
 
 
 /** @typedef {import('../../features/bowel/model').BowelDraft} BowelDraft */
@@ -203,7 +221,10 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
       }
       if (!response.ok) throw new ApiError('http', `The API returned HTTP ${response.status}.`, response.status);
 
-      if (empty && response.status === 204) return undefined;
+      if (empty && response.status === 204) {
+        if (method !== 'GET') publishRecordChange();
+        return undefined;
+      }
 
       let result;
       try {
@@ -212,6 +233,7 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
         throw new ApiError('response', 'The API returned invalid JSON.');
       }
       if (!validate(result)) throw new ApiError('response', 'The API response does not match the current endpoint format.');
+      if (method !== 'GET') publishRecordChange();
       return result;
     })();
 
