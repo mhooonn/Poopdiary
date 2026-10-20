@@ -1,7 +1,11 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { AppText, Button, Card, Sheet } from '../../design-system';
-import { deleteFood, deleteDrink } from '../../data/api';
+import {
+  deleteFood,
+  deleteDrink,
+  deleteExercise,
+} from '../../data/api';
 import { useBowel } from '../bowel/BowelProvider';
 import { EFFORTS, LEVELS, PAIN_LOCATIONS, STOOL_TYPES, SYMPTOMS } from '../bowel/model';
 import { useRecordFeedback } from '../../navigation/RecordFeedbackProvider';
@@ -22,9 +26,17 @@ export function DiaryEntryDetails({ entry, onClose, onDeleted }) {
     lock.current = true;
     setDeleting(true); setError('');
     try {
-      if (entry.kind === 'bowel') await remove(entry.id);
-      else if (entry.kind === 'food') await deleteFood(entry.id);
-      else await deleteDrink(entry.id);
+      
+      if (entry.kind === 'bowel') {
+        await remove(entry.id);
+      } else if (entry.kind === 'food') {
+        await deleteFood(entry.id);
+      } else if (entry.kind === 'exercise') {
+        await deleteExercise(entry.id);
+      } else {
+        await deleteDrink(entry.id);
+      }
+
       onDeleted(entry); notify('Entry deleted'); onClose();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not delete entry.');
@@ -57,6 +69,30 @@ function EntryBody({ entry }) {
     <AppText>{entry.record.amount_ml} ml</AppText>
     {entry.record.note ? <Card><AppText variant="label">Note</AppText><AppText>{entry.record.note}</AppText></Card> : null}
   </>;
+  
+  if (entry.kind === 'exercise') return (
+    <>
+      <AppText variant="label">
+        Exercise type
+      </AppText>
+      <AppText>{entry.record.exercise_type}</AppText>
+
+      <AppText variant="label">
+        Duration
+      </AppText>
+      <AppText>
+        {entry.record.duration_minutes} minutes
+      </AppText>
+
+      {entry.record.notes ? (
+        <Card>
+          <AppText variant="label">Notes</AppText>
+          <AppText>{entry.record.notes}</AppText>
+        </Card>
+      ) : null}
+    </>
+  );
+
   const record = entry.record;
   /** @param {string|null} value */
   const level = (value) => LEVELS.find((option) => option.code === value)?.label || 'Not recorded';
