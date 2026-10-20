@@ -26,4 +26,12 @@ export const createBowel = api.createBowel;
 export const updateBowel = api.updateBowel;
 export const deleteBowel = api.deleteBowel;
 
+// Exercise API
+export const listExercise = api.listExercise;
+export const getExercise = api.getExercise;
+export const createExercise = api.createExercise;
+export const updateExercise = api.updateExercise;
+export const deleteExercise = api.deleteExercise;
+
+
 export { ApiError, createApiClient } from './client';

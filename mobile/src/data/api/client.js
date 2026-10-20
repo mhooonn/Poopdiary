@@ -16,14 +16,17 @@ import { isBowelDraft, isBowelRecord, isUtcTimestamp } from '../../features/bowe
 
 // Food types
 /** @typedef {{id: number, food_name: string, meal_type: string | null, date: string, time: string | null, notes: string | null}} FoodRecord */
-
 /** @typedef {{id: number, foodName: string, mealType?: string | null, date: string, time?: string | null, notes?: string | null}} FoodResponse */
-
 /** @typedef {{foodName: string, mealType?: string | null, date: string, time?: string | null, notes?: string}} FoodDraft */
-
 /** @typedef {{message: string}} FoodDeleteResponse */
 
-/** @typedef {RequestOptions & {method?:'GET'|'POST'|'PUT'|'DELETE', body?:BowelDraft | FoodDraft | DrinkDraft | DrinkChanges, empty?:boolean}} ApiRequestOptions */
+// Exercise
+/** @typedef {{exercise_type: string, duration_minutes: number, occurred_at: string, local_date: string, notes?: string | null}} ExerciseDraft */
+/** @typedef {ExerciseDraft & {id: number, notes: string | null}} ExerciseRecord */
+/** @typedef {RequestOptions & {date?: string}} ListExerciseOptions */
+
+/** @typedef {RequestOptions & {method?: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: BowelDraft | FoodDraft | DrinkDraft | DrinkChanges | ExerciseDraft, empty?: boolean}} ApiRequestOptions */
+
 
 
 
@@ -110,6 +113,37 @@ function isFoodDeleted(value) {
     && value.message === 'Food entry deleted';
 }
 
+
+// exercise functions
+/** @param {unknown} value @returns {value is ExerciseDraft} */
+function isExerciseDraft(value) {
+  return isObject(value)
+    && typeof value.exercise_type === 'string'
+    && value.exercise_type.trim().length > 0
+    && value.exercise_type.length <= 100
+    && typeof value.duration_minutes === 'number'
+    && Number.isSafeInteger(value.duration_minutes)
+    && value.duration_minutes > 0
+    && isUtcTimestamp(value.occurred_at)
+    && isLocalDate(value.local_date)
+    && (value.notes == null ||
+      (typeof value.notes === 'string' && value.notes.length <= 1000));
+}
+
+/** @param {unknown} value @returns {value is ExerciseRecord} */
+function isExerciseRecord(value) {
+  return isObject(value)
+    && typeof value.id === 'number'
+    && Number.isSafeInteger(value.id)
+    && value.id > 0
+    && isExerciseDraft(value)
+    && (value.notes === null || typeof value.notes === 'string');
+}
+
+/** @param {unknown} value @returns {value is ExerciseRecord[]} */
+function isExerciseList(value) {
+  return Array.isArray(value) && value.every(isExerciseRecord);
+}
 
 /**
  * Adapter for the team's API. Values remain in the server's units.
@@ -207,6 +241,15 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
     return `/api/drinks/${id}`;
   }
 
+  /** @param {number} id */
+  function exercisePath(id) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new ApiError('validation', 'Choose a valid exercise entry.');
+    }
+    return `/api/exercise/${id}`;
+  }
+
+
   return {
   /** @param {RequestOptions} [options] */
   getHealth: (options = {}) => request('/api/health', isHealth, options),
@@ -239,6 +282,71 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
         ...options,
         method: 'DELETE',
       }),
+
+    /** @param {number} id */
+    exercisePath: undefined,
+
+    // EXERCISE API
+
+    /** @param {ListExerciseOptions} [options] @returns {Promise<ExerciseRecord[]>} */
+    async listExercise(options = {}) {
+      if (options.date !== undefined && !isLocalDate(options.date)) {
+        throw new ApiError('validation', 'Choose a valid date.');
+      }
+
+      const query = options.date === undefined
+        ? ''
+        : `?date=${encodeURIComponent(options.date)}`;
+
+      return request(`/api/exercise${query}`, isExerciseList, options);
+    },
+
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<ExerciseRecord>} */
+    async getExercise(id, options = {}) {
+      return request(exercisePath(id), isExerciseRecord, options);
+    },
+
+    /** @param {ExerciseDraft} value @param {RequestOptions} [options] @returns {Promise<ExerciseRecord>} */
+    async createExercise(value, options = {}) {
+      if (!isExerciseDraft(value)) {
+        throw new ApiError('validation', 'Check the exercise before saving.');
+      }
+
+      return request('/api/exercise', isExerciseRecord, {
+        ...options,
+        method: 'POST',
+        body: value,
+      });
+    },
+
+    /** @param {number} id @param {ExerciseDraft} value @param {RequestOptions} [options] @returns {Promise<ExerciseRecord>} */
+    async updateExercise(id, value, options = {}) {
+      if (!isExerciseDraft(value)) {
+        throw new ApiError('validation', 'Check the exercise before saving.');
+      }
+
+      return request(exercisePath(id), isExerciseRecord, {
+        ...options,
+        method: 'PUT',
+        body: value,
+      });
+    },
+
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<void>} */
+    async deleteExercise(id, options = {}) {
+      return request(
+        exercisePath(id),
+        (value) => value === undefined,
+        {
+          ...options,
+          method: 'DELETE',
+          empty: true,
+        }
+      );
+    },
+
+
+    // DRINKS API
 
   /** @param {ListDrinksOptions} [options] @returns {Promise<DrinkRecord[]>} */
   async listDrinks(options = {}) {
