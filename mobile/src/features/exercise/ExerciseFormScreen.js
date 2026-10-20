@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -18,6 +18,8 @@ import {
   getExercise,
   updateExercise,
 } from '../../data/api';
+import { useRecordFeedback } from '../../navigation/RecordFeedbackProvider';
+import { useWriteGuard } from '../../navigation/useWriteGuard';
 
 const EXERCISE_TYPES = [
   'Walking',
@@ -76,6 +78,7 @@ export function ExerciseFormScreen() {
   const theme = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { notify } = useRecordFeedback();
 
   const editParam =
     typeof params.edit === 'string' ? params.edit : '';
@@ -91,11 +94,20 @@ export function ExerciseFormScreen() {
   );
 
   const [loading, setLoading] = useState(false);
-  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(Boolean(editParam));
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [recordDate, setRecordDate] = useState(today());
+  const writing = useRef(false);
+  useWriteGuard(loading, writing);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const editing = editParam !== '';
+  const exit = () => {
+    if (writing.current) return;
+    if (editing) router.dismissTo({ pathname: '/diary', params: { date: recordDate } });
+    else router.dismissTo('/');
+  };
 
   // Load existing exercise when opening /exercise?edit=ID
   useEffect(() => {
@@ -106,8 +118,12 @@ export function ExerciseFormScreen() {
     async function loadExercise() {
       setLoadingEdit(true);
       setError('');
+      setEditingId(null);
 
       try {
+        if (!/^[1-9]\d*$/.test(editParam) || !Number.isSafeInteger(Number(editParam))) {
+          throw new Error('Exercise entry not found.');
+        }
         const id = Number(editParam);
 
         const record = await getExercise(id);
@@ -118,6 +134,7 @@ export function ExerciseFormScreen() {
         setExerciseType(record.exercise_type);
         setDuration(String(record.duration_minutes));
         setDate(record.local_date);
+        setRecordDate(record.local_date);
 
         const recordedTime = new Date(record.occurred_at);
         setTime(
@@ -140,18 +157,9 @@ export function ExerciseFormScreen() {
     };
   }, [editParam]);
 
-  function resetForm() {
-    setExerciseType('Walking');
-    setDuration('30');
-    setDate(today());
-    setTime(currentTime());
-    setNotes('');
-    setEditingId(null);
-  }
-
   async function handleSave() {
+    if (writing.current || (editing && (loadingEdit || editingId === null))) return;
     setError('');
-    setMessage('');
 
     if (!exerciseType.trim()) {
       setError('Please select an exercise type.');
@@ -195,23 +203,26 @@ export function ExerciseFormScreen() {
       notes: notes.trim(),
     };
 
+    writing.current = true;
     setLoading(true);
 
     try {
       if (editingId !== null) {
         await updateExercise(editingId, exercise);
-        router.back();
-        return;
+      } else {
+        await createExercise(exercise);
       }
 
-      await createExercise(exercise);
-
-      resetForm();
-      setMessage('Exercise saved successfully!');
+      if (mounted.current) {
+        notify(editing ? 'Changes saved' : 'Exercise entry saved');
+        if (editing) router.dismissTo({ pathname: '/diary', params: { date } });
+        else router.dismissTo('/');
+      }
     } catch (failure) {
-      setError(errorMessage(failure));
+      if (mounted.current) setError(errorMessage(failure));
     } finally {
-      setLoading(false);
+      writing.current = false;
+      if (mounted.current) setLoading(false);
     }
   }
 
@@ -230,7 +241,7 @@ export function ExerciseFormScreen() {
     <Screen
       title={editing ? 'Edit exercise' : 'Log exercise'}
       subtitle="Track your physical activity"
-      onBack={() => router.back()}
+      onBack={exit}
       testID="exercise-form"
     >
       {loadingEdit ? (
@@ -252,6 +263,7 @@ export function ExerciseFormScreen() {
                   selected={exerciseType === type}
                   onPress={() => setExerciseType(type)}
                   selectionRole="radio"
+                  disabled={loading}
                 />
               ))}
             </View>
@@ -265,6 +277,7 @@ export function ExerciseFormScreen() {
             <TextInput
               style={inputStyle}
               value={duration}
+              editable={!loading}
               onChangeText={setDuration}
               keyboardType="number-pad"
               placeholder="e.g. 30"
@@ -282,6 +295,7 @@ export function ExerciseFormScreen() {
             <TextInput
               style={inputStyle}
               value={date}
+              editable={!loading}
               onChangeText={setDate}
               placeholder="YYYY-MM-DD"
               placeholderTextColor={theme.colors.text.secondary}
@@ -299,6 +313,7 @@ export function ExerciseFormScreen() {
             <TextInput
               style={inputStyle}
               value={time}
+              editable={!loading}
               onChangeText={setTime}
               placeholder="HH:MM"
               placeholderTextColor={theme.colors.text.secondary}
@@ -315,6 +330,7 @@ export function ExerciseFormScreen() {
 
             <NoteField
               value={notes}
+              disabled={loading}
               onChange={setNotes}
               testID="exercise-notes"
             />
@@ -327,14 +343,6 @@ export function ExerciseFormScreen() {
             >
               {error}
             </AppText>
-          )}
-
-          {message !== '' && (
-            <Card>
-              <AppText accessibilityLiveRegion="polite">
-                {message}
-              </AppText>
-            </Card>
           )}
 
           <Button
