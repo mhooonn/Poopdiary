@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { AppText, Button, Choice, Sheet, Stepper, useTheme } from '../../../design-system';
+import { Button, Choice, Sheet, Stepper, TimeInput, useTheme } from '../../../design-system';
 import { daysInMonth, formatDate, formatTime, updateDatePart } from '../model';
 
 /** @param {{visible:boolean,date:string,time:string,onClose:()=>void,onApply:(date:string,time:string)=>void}} props */
@@ -15,7 +15,6 @@ function DateTimeDraft({ date, time, onClose, onApply }) {
   const [draftTime, setTime] = useState(time);
   const [custom, setCustom] = useState(false);
   const [year, month, day] = draftDate.split('-').map(Number);
-  const [hour, minute] = draftTime.split(':').map(Number);
   const today = formatDate(new Date());
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
@@ -40,11 +39,7 @@ function DateTimeDraft({ date, time, onClose, onApply }) {
         <View style={cell}><Stepper label="Day" value={day} min={1} max={daysInMonth(year, month)} onChange={(value) => setDate(updateDatePart(draftDate, 'day', value))} testID="date-day" /></View>
       </View>
     </View>}
-    <AppText variant="sectionTitle" style={{ textAlign: 'center', fontVariant: ['tabular-nums'] }}>{draftTime}</AppText>
-    <View style={row}>
-      <View style={cell}><Stepper label="Hour" value={hour} min={0} max={23} onChange={(value) => setTime(`${String(value).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)} testID="time-hour" /></View>
-      <View style={cell}><Stepper label="Minute" value={minute} min={0} max={59} onChange={(value) => setTime(`${String(hour).padStart(2, '0')}:${String(value).padStart(2, '0')}`)} testID="time-minute" /></View>
-    </View>
+    <TimeInput label="Time" value={draftTime} onChange={setTime} testID="bowel-time-input" />
     <View style={row}>
       {[{ value: 0, label: 'Now' }, { value: 5, label: '5 min ago' }, { value: 30, label: '30 min ago' }].map((item) => <View key={item.value} style={cell}>
         <Button label={item.label} variant="secondary" onPress={() => relative(item.value)} />

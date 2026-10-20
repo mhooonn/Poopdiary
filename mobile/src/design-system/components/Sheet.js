@@ -50,7 +50,7 @@ export function Sheet({ visible, title, onClose, children, dismissible = true })
 
   if (!visible) return null;
   return <Modal visible transparent animationType="none" onRequestClose={close} statusBarTranslucent>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end' }}>
       <Animated.View testID="sheet-backdrop" style={[StyleSheet.absoluteFill, { opacity: backdrop, backgroundColor: theme.colors.overlay }]}>
         <Pressable testID="sheet-dismiss" onPress={close} accessible={false} importantForAccessibility="no" style={StyleSheet.absoluteFill} />
       </Animated.View>

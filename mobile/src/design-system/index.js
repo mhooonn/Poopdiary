@@ -9,4 +9,5 @@ export { IconButton } from './components/IconButton';
 export { Sheet } from './components/Sheet';
 export { Slider } from './components/Slider';
 export { Stepper } from './components/Stepper';
+export { TimeInput } from './components/TimeInput';
 export { NoteField } from './components/NoteField';
