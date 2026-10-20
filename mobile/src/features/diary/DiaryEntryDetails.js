@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText, Button, Card, Sheet, useTheme } from '../../design-system';
 import {
@@ -129,6 +129,7 @@ function FoodPhotoDetails({ foodId }) {
     return () => { active = false; };
   }, [foodId]);
 
+  if (Platform.OS === 'web') return <AppText tone="secondary">Meal photos are available on the device where they were added.</AppText>;
   if (!uri) return failed ? <AppText tone="secondary">Meal photo is unavailable on this device.</AppText> : null;
 
   return <View style={{ gap: theme.spacing.sm }}>

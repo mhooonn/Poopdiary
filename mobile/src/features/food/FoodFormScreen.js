@@ -421,7 +421,7 @@ export function FoodFormScreen() {
             />
           </Card>
 
-          <FoodPhotoField
+          {Platform.OS !== 'web' && <FoodPhotoField
             uri={photoDraft?.uri ?? (removeExistingPhoto ? null : currentExistingPhotoUri)}
             loading={photoLoading}
             busy={photoBusy || saving || savedFoodId !== null}
@@ -431,7 +431,7 @@ export function FoodFormScreen() {
             onTakePhoto={() => void takePhoto()}
             onRemove={() => void removePhoto()}
             onOpenSettings={() => void openCameraSettings()}
-          />
+          />}
 
           <Card>
             <AppText variant="label">Meal type</AppText>
