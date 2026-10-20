@@ -128,7 +128,7 @@ export function TodayScreen() {
                     style={{
                       height: 8,
                       backgroundColor: theme.colors.surface.subtle,
-                      borderRadius: 10,
+                      borderRadius: theme.radius.pill,
                       overflow: 'hidden',
                     }}
                   >
