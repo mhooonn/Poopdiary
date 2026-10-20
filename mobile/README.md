@@ -23,7 +23,7 @@ src/data/api/         Backend client
 src/features/         Feature forms; shared Diary model, loading and details
 ```
 
-Main tabs are Today, Diary, Insights and Profile. Log opens six recording routes; Food, Bowel and Drinks are connected. Symptoms, Exercise and Sleep remain placeholders. Keep API requests in `src/data/api`.
+Main tabs are Today, Diary, Insights and Profile. Log opens six recording routes; Food, Bowel, Drinks and Exercise are connected. Symptoms and Sleep remain placeholders. Keep API requests in `src/data/api`.
 
 ## Bowel movements
 
@@ -33,7 +33,7 @@ The backend SQLite database is the source of truth. Failed writes retain the for
 
 ## Shared Diary
 
-`src/screens/DiaryScreen.js` and `src/features/diary/` own one timeline for Food, Bowel and Drinks. Entries use local dates and ascending times; food without a time appears last. Tap a record for shared details, Edit or Delete. New records return to Today; edits return to the record's date in Diary. The Diary `+` and bottom Log use the same menu.
+`src/screens/DiaryScreen.js` and `src/features/diary/` own one timeline for Food, Bowel, Drinks and Exercise. Entries use local dates and ascending times; food without a time appears last. Tap a record for shared details, Edit or Delete. New records return to Today; edits return to the record's saved date in Diary, including when the date changes. The Diary `+` and bottom Log use the same menu.
 
 One owner maintains shared Diary/navigation. Feature owners maintain their forms and API routes. Add new record types through the diary model and API client; do not add separate feature lists or forms to Diary. Old food/drinks preview components remain for compatibility.
 

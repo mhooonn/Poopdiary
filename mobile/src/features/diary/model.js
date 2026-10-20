@@ -13,7 +13,7 @@ import {
 
 /** @typedef {(EntryBase & {kind:'food',record:import('../../data/api/client').FoodRecord}) | (EntryBase & {kind:'bowel',record:import('../bowel/model').BowelRecord}) | (EntryBase & {kind:'water',record:import('../../data/api/client').DrinkRecord}) | (EntryBase & {kind:'exercise',record:import('../../data/api/client').ExerciseRecord})} DiaryEntry */
 
-/** @typedef {{food: import('../../data/api/client').FoodRecord[], bowel: import('../bowel/model').BowelRecord[], water: import('../../data/api/client').DrinkRecord[], exercise: import('../../data/api/client').ExerciseRecord[] }} DiaryRecords */
+/** @typedef {{food: import('../../data/api/client').FoodRecord[], bowel: import('../bowel/model').BowelRecord[], water: import('../../data/api/client').DrinkRecord[], exercise?: import('../../data/api/client').ExerciseRecord[] }} DiaryRecords */
 
 export const SOURCE_LABELS = {
   food: 'Food',
@@ -135,7 +135,7 @@ export function diaryEntries(records, date) {
     ...records.food.map(foodEntry),
     ...records.bowel.map(bowelEntry),
     ...records.water.map(drinkEntry),
-    ...records.exercise.map(exerciseEntry),
+    ...(records.exercise ?? []).map(exerciseEntry),
   ]
     .filter((entry) => entry.localDate === date)
     .sort(

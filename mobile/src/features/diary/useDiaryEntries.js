@@ -138,7 +138,7 @@ export function useDiaryEntries(date) {
         water: current.records.water.filter(
           (row) => entry.kind !== 'water' || row.id !== entry.id
         ),
-        exercise: current.records.exercise.filter(
+        exercise: (current.records.exercise ?? []).filter(
           (row) => entry.kind !== 'exercise' || row.id !== entry.id
         ),
       },

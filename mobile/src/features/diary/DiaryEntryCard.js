@@ -17,9 +17,7 @@ export function DiaryEntryCard({ entry, onPress }) {
 
   const color = entry.kind === 'water'
     ? theme.colors.beverage[entry.record.drink_type]
-    : entry.kind === 'exercise'
-      ? theme.colors.entry.food
-      : theme.colors.entry[entry.kind];
+    : theme.colors.entry[entry.kind];
 
   const Icon = entry.kind === 'food'
     ? Utensils

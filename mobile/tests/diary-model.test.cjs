@@ -11,32 +11,51 @@ const bowel = () => ({
   created_at: localInstant(8, 46), updated_at: localInstant(8, 46),
 });
 const drink = () => ({ id: 1, amount_ml: 250, drink_type: 'water', note: null, local_date: selectedDate, logged_at: localInstant(9, 30) });
+const exercise = () => ({ id: 1, exercise_type: 'Walking', duration_minutes: 30, occurred_at: localInstant(9, 55), local_date: selectedDate, notes: null });
 
 test('Diary mixes all sources in chronological order without changing their records', async () => {
   const { diaryEntries } = await diaryModelModule;
   const bowelRecord = bowel();
   const drinkRecord = drink();
-  const records = { food: [food], bowel: [bowelRecord], water: [drinkRecord] };
+  const exerciseRecord = exercise();
+  const records = { food: [food], bowel: [bowelRecord], water: [drinkRecord], exercise: [exerciseRecord] };
   const before = structuredClone(records);
   const entries = diaryEntries(records, selectedDate);
-  assert.deepEqual(entries.map((entry) => entry.kind), ['bowel', 'water', 'food']);
-  assert.deepEqual(entries.map((entry) => entry.time), ['08:45', '09:30', '10:15']);
+  assert.deepEqual(entries.map((entry) => entry.kind), ['bowel', 'water', 'exercise', 'food']);
+  assert.deepEqual(entries.map((entry) => entry.time), ['08:45', '09:30', '09:55', '10:15']);
   assert.strictEqual(entries[0].record, bowelRecord);
   assert.strictEqual(entries[1].record, drinkRecord);
-  assert.strictEqual(entries[2].record, food);
+  assert.strictEqual(entries[2].record, exerciseRecord);
+  assert.strictEqual(entries[3].record, food);
   assert.deepEqual(records, before);
 });
 
-test('Diary date filtering uses local bowel dates and stored food/drink dates', async () => {
+test('Diary still accepts records without an exercise collection', async () => {
+  const { diaryEntries } = await diaryModelModule;
+  const entries = diaryEntries({ food: [food], bowel: [bowel()], water: [drink()] }, selectedDate);
+  assert.deepEqual(entries.map((entry) => entry.key), ['bowel:1', 'water:1', 'food:1']);
+});
+
+test('Diary date filtering uses local bowel dates and stored food/drink/exercise dates', async () => {
   const { diaryEntries } = await diaryModelModule;
   const records = {
     food: [food, { ...food, id: 2, date: '2026-10-08' }],
     bowel: [bowel(), { ...bowel(), id: 2, occurred_at: localInstant(23, 50, 8) }],
     water: [drink(), { ...drink(), id: 2, local_date: '2026-10-08' }],
+    exercise: [
+      { ...exercise(), occurred_at: localInstant(9, 55, 10) },
+      { ...exercise(), id: 2, local_date: '2026-10-08' },
+    ],
   };
-  assert.deepEqual(diaryEntries(records, selectedDate).map((entry) => entry.id), [1, 1, 1]);
-  assert.equal(diaryEntries(records, '2026-10-08').length, 3);
+  const entries = diaryEntries(records, selectedDate);
+  assert.deepEqual(entries.map((entry) => entry.id), [1, 1, 1, 1]);
+  const exerciseEntry = entries.find((entry) => entry.kind === 'exercise');
+  assert.equal(exerciseEntry.localDate, selectedDate);
+  assert.equal(exerciseEntry.time, '09:55');
+  assert.strictEqual(exerciseEntry.record, records.exercise[0]);
+  assert.equal(diaryEntries(records, '2026-10-08').length, 4);
   assert.deepEqual(diaryEntries(records, '2026-10-07'), []);
+  assert.deepEqual(diaryEntries(records, '2026-10-10'), []);
 });
 
 test('bowel records crossing UTC midnight stay on the device local day', async () => {
@@ -64,12 +83,13 @@ test('bowel records crossing UTC midnight stay on the device local day', async (
 
 test('records sharing numeric IDs have distinct keys and matching editor destinations', async () => {
   const { diaryEntries, editDestination } = await diaryModelModule;
-  const entries = diaryEntries({ food: [food], bowel: [bowel()], water: [drink()] }, selectedDate);
-  assert.equal(new Set(entries.map((entry) => entry.key)).size, 3);
-  assert.deepEqual(entries.map((entry) => entry.key), ['bowel:1', 'water:1', 'food:1']);
+  const entries = diaryEntries({ food: [food], bowel: [bowel()], water: [drink()], exercise: [exercise()] }, selectedDate);
+  assert.equal(new Set(entries.map((entry) => entry.key)).size, 4);
+  assert.deepEqual(entries.map((entry) => entry.key), ['bowel:1', 'water:1', 'exercise:1', 'food:1']);
   assert.deepEqual(entries.map(editDestination), [
     { pathname: '/bowel', params: { edit: '1' } },
     { pathname: '/water', params: { edit: '1' } },
+    { pathname: '/exercise', params: { edit: '1' } },
     { pathname: '/food', params: { edit: '1' } },
   ]);
 });
