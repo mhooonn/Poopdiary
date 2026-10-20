@@ -29,6 +29,27 @@ db.serialize(() => {
         )
     `);
 
+    
+    // Exercise table
+    db.run(`
+        CREATE TABLE IF NOT EXISTS exercise (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exercise_type TEXT NOT NULL,
+            duration_minutes INTEGER NOT NULL
+                CHECK (duration_minutes > 0),
+            occurred_at TEXT NOT NULL,
+            local_date TEXT NOT NULL,
+            notes TEXT
+        )
+    `);
+
+    // Index for finding exercise entries by date
+    db.run(`
+        CREATE INDEX IF NOT EXISTS idx_exercise_date
+        ON exercise (local_date)
+    `);
+
+
 });
 
 
