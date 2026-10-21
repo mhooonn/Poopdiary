@@ -186,7 +186,7 @@ export function FoodFormScreen() {
         }
       }
 
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.9, exif: false });
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], cameraType: ImagePicker.CameraType.back, allowsEditing: false, quality: 0.9, exif: false });
       if (!result.canceled && result.assets?.[0]) await savePickedPhoto(result.assets[0]);
     } catch (failure) {
       setPhotoError(errorMessage(failure));
