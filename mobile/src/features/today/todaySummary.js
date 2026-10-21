@@ -168,6 +168,7 @@ function collectSymptoms(entries) {
  *   waterMl: number,
  *   otherDrinks: {type: string, ml: number}[],
  *   meals: TimelineItem[],
+ *   exercise: TimelineItem[],
  *   movements: TimelineItem[],
  *   bowelCount: number,
  *   symptoms: SymptomItem[]
@@ -177,6 +178,7 @@ export function summarizeToday(entries) {
   const food = entries.filter((entry) => entry.kind === 'food');
   const bowel = entries.filter((entry) => entry.kind === 'bowel');
   const drinks = entries.filter((entry) => entry.kind === 'water');
+  const exercise = entries.filter((entry) => entry.kind === 'exercise');
 
   let waterMl = 0;
 
@@ -204,6 +206,13 @@ export function summarizeToday(entries) {
 
   /** @type {TimelineItem[]} */
   const meals = food.map((entry) => ({
+    key: entry.key,
+    time: entry.time,
+    title: capitalize(entry.title),
+    detail: entry.summary,
+  }));
+
+  const exercises = exercise.map((entry) => ({
     key: entry.key,
     time: entry.time,
     title: capitalize(entry.title),
@@ -246,5 +255,6 @@ export function summarizeToday(entries) {
     movements,
     bowelCount: movements.length,
     symptoms: collectSymptoms(entries),
+    exercise: exercises
   };
 }
