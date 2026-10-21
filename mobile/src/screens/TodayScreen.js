@@ -41,6 +41,7 @@ export function TodayScreen() {
   const waterError = errors.some((error) => error.kind === 'water');
   const foodError = errors.some((error) => error.kind === 'food');
   const bowelError = errors.some((error) => error.kind === 'bowel');
+  const exersiceError = errors.some((error) => error.kind === 'exercise');
 
   const waterPercent = Math.min(
     100,
@@ -69,25 +70,52 @@ export function TodayScreen() {
     <Screen title="Today">
       <View style={{ gap: theme.spacing.md }}>
 
-        <AppText variant="sectionTitle">{getGreeting()}!</AppText>
-        <AppText>
-          {new Date(`${today}T12:00:00`).toLocaleDateString('en-GB', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}
-        </AppText>
+        {/* Greeting and date */}
+        <View style={{ gap: theme.spacing.xs }}>
+          <AppText variant="sectionTitle">{getGreeting()}!</AppText>
 
-        {!loading && (
-          <AppText>
-            {summary.meals.length} meals · {formatLitres(summary.waterMl)} L water · {summary.bowelCount} bowel movements
+          <AppText tone="secondary">
+            {new Date(`${today}T12:00:00`).toLocaleDateString('en-GB', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}
           </AppText>
+        </View>
+
+        {/* Daily summary */}
+        {!loading && (
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              columnGap: theme.spacing.sm,
+              rowGap: theme.spacing.xs,
+            }}
+          >
+            <AppText tone="secondary">
+              {summary.meals.length} meals
+            </AppText>
+
+            <AppText tone="secondary">
+              {formatLitres(summary.waterMl)} L water
+            </AppText>
+
+            <AppText tone="secondary">
+              {summary.bowelCount} bowel movements
+            </AppText>
+
+            <AppText tone="secondary">
+              {summary.exercise.length} exercises
+            </AppText>
+          </View>
         )}
 
         {loading && (
           <AppText>Loading...</AppText>
         )}
 
+        {/* Errors */}
         {errors.length > 0 && (
           <Card>
             {errors.map((error) => (
@@ -110,6 +138,8 @@ export function TodayScreen() {
 
         {!loading || entries.length > 0 ? (
           <>
+
+            {/* Water */}
             <Card>
               <AppText variant="sectionTitle">
                 💧 Water
@@ -119,9 +149,12 @@ export function TodayScreen() {
                 <AppText>Could not load water data.</AppText>
               ) : (
                 <>
-                  <AppText>
-                    {formatLitres(summary.waterMl)} L /
-                    {' '}{formatLitres(WATER_GOAL_ML)} L
+                  <AppText variant="sectionTitle">
+                    {formatLitres(summary.waterMl)} L
+                  </AppText>
+
+                  <AppText tone="secondary">
+                    Goal: {' '}{formatLitres(WATER_GOAL_ML)} L
                   </AppText>
 
                   <View
@@ -141,7 +174,7 @@ export function TodayScreen() {
                     />
                   </View>
 
-                  <AppText>
+                  <AppText tone="secondary">
                     {waterLeft > 0
                       ? `${formatLitres(waterLeft)} L to go`
                       : 'Goal reached'}
@@ -150,6 +183,7 @@ export function TodayScreen() {
               )}
             </Card>
 
+            {/* Other drinks */}
             <Card>
               <AppText variant="sectionTitle">
                 🥤 Other drinks
@@ -158,22 +192,24 @@ export function TodayScreen() {
               {waterError ? (
                 <AppText>Could not load drink data.</AppText>
               ) : summary.otherDrinks.length === 0 ? (
-                <AppText>No other drinks logged.</AppText>
+                <AppText tone="secondary">No other drinks logged.</AppText>
               ) : (
-                summary.otherDrinks.map((drink) => (
-                  <AppText key={drink.type}>
-                    {drinkLabel(drink.type)}: {drink.ml} ml
-                  </AppText>
-                ))
+                <AppText>
+                {summary.otherDrinks
+                  .map((drink) =>  drinkLabel(drink.type))
+                  .join(' | ')}
+                  
+                </AppText>
               )}
 
               {!waterError && (
-                <AppText>
+                <AppText tone="secondary">
                   Total: {otherDrinksTotal} ml
                 </AppText>
               )}
             </Card>
-
+            
+            {/* Food */}
             <Card>
               <AppText variant="sectionTitle">
                 🍽️ Food
@@ -182,22 +218,24 @@ export function TodayScreen() {
               {foodError ? (
                 <AppText>Could not load food data.</AppText>
               ) : summary.meals.length === 0 ? (
-                <AppText>Nothing logged yet.</AppText>
+                <AppText tone="secondary">Nothing logged yet.</AppText>
               ) : (
-                summary.meals.slice(0, 4).map((meal) => (
-                  <View key={meal.key}>
-                    <AppText>
-                      {meal.time} - {meal.title}
-                    </AppText>
+                <>
+                <AppText tone="secondary">
+                  {summary.meals.length} meals logged
+                </AppText>
 
-                    {meal.detail && (
-                      <AppText>{meal.detail}</AppText>
-                    )}
-                  </View>
-                ))
+                <AppText>
+                  {summary.meals.slice(0, 4).map((meal) => meal.detail)
+                  .join(' - ')}
+                </AppText> 
+                </>
+              
+                
               )}
             </Card>
 
+            {/* Bowel movements and symptoms */}
             <Card>
               <AppText variant="sectionTitle">
                 📋 Bowel & symptoms
@@ -207,37 +245,56 @@ export function TodayScreen() {
                 <AppText>Could not load bowel data.</AppText>
               ) : (
                 <>
-                  {summary.bowelCount === 0 ? (
-                    <AppText>
-                      No bowel movements logged.
-                    </AppText>
-                  ) : (
-                    summary.movements.slice(0, 3).map((movement) => (
-                      <View key={movement.key}>
-                        <AppText>
-                          {movement.time} - {movement.title}
-                        </AppText>
+                <AppText>
+                  {summary.bowelCount} bowel movements
+                </AppText>
+                
 
-                        {movement.detail && (
-                          <AppText>{movement.detail}</AppText>
-                        )}
-                      </View>
-                    ))
-                  )}
+                  
 
                   <AppText variant="label">
                     Symptoms
                   </AppText>
 
                   {summary.symptoms.length === 0 ? (
-                    <AppText>No symptoms logged.</AppText>
+                    <AppText tone="secondary">No symptoms logged.</AppText>
                   ) : (
-                    summary.symptoms.map((symptom) => (
-                      <AppText key={symptom.key}>
-                        • {symptom.text}
-                      </AppText>
-                    ))
+                    <AppText>
+                      {summary.symptoms
+                        .map((symptom) => symptom.text)
+                        .join(' · ')}
+                    </AppText>
                   )}
+                </>
+              )}
+            </Card>
+
+            {/* Exercise */}
+            <Card>
+              <AppText variant="sectionTitle">
+                👟 Exercise
+              </AppText>
+
+              {exersiceError ? (
+                <AppText>
+                  Could not load exercise data.
+                </AppText>
+              ) : summary.exercise.length === 0 ? (
+                <AppText tone="secondary">
+                  Nothing logged yet.
+                </AppText>
+              ) : (
+                <>
+                <AppText tone="secondary">
+                  {summary.exercise.length} activities
+                </AppText>
+
+                <AppText>
+                  {summary.exercise
+                    .slice(0, 4)
+                    .map((exercise) => exercise.title)
+                    .join(' · ')}
+                </AppText>
                 </>
               )}
             </Card>
