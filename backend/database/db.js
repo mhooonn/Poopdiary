@@ -43,6 +43,19 @@ db.serialize(() => {
         )
     `);
 
+      // Symptoms table
+    db.run(`
+        CREATE TABLE IF NOT EXISTS symptoms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symptom_type TEXT NOT NULL,
+            severity INTEGER NOT NULL
+                CHECK (severity BETWEEN 1 AND 10),
+            occurred_at TEXT NOT NULL,
+            local_date TEXT NOT NULL,
+            notes TEXT
+        )
+    `);
+
     // Index for finding exercise entries by date
     db.run(`
         CREATE INDEX IF NOT EXISTS idx_exercise_date

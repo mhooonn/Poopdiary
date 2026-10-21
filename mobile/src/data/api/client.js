@@ -43,11 +43,12 @@ function publishRecordChange() {
 /** @typedef {ExerciseDraft & {id: number, notes: string | null}} ExerciseRecord */
 /** @typedef {RequestOptions & {date?: string}} ListExerciseOptions */
 
-/** @typedef {RequestOptions & {method?: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: BowelDraft | FoodDraft | DrinkDraft | DrinkChanges | ExerciseDraft, empty?: boolean}} ApiRequestOptions */
+// symptoms
+/** @typedef {{symptom_type: string, severity: number, occurred_at: string, local_date: string, notes?: string | null}} SymptomDraft */
+/** @typedef {SymptomDraft & {id: number, notes: string | null}} SymptomRecord */
+/** @typedef {RequestOptions & {date?: string}} ListSymptomsOptions */
 
-
-
-
+/** @typedef {RequestOptions & {method?: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: BowelDraft | FoodDraft | DrinkDraft | DrinkChanges | ExerciseDraft | SymptomDraft, empty?: boolean}} ApiRequestOptions */
 
 export class ApiError extends Error {
   /** @param {ApiErrorCode} code @param {string} message @param {number} [status] */
@@ -163,6 +164,42 @@ function isExerciseList(value) {
   return Array.isArray(value) && value.every(isExerciseRecord);
 }
 
+// symptom functions
+/** @param {unknown} value @returns {value is SymptomDraft} */
+function isSymptomDraft(value) {
+  return isObject(value)
+    && typeof value.symptom_type === 'string'
+    && value.symptom_type.trim().length > 0
+    && value.symptom_type.length <= 100
+    && Number.isInteger(value.severity)
+    && /** @type {number} */ (value.severity) >= 1
+    && /** @type {number} */ (value.severity) <= 10
+    && isUtcTimestamp(value.occurred_at)
+    && isLocalDate(value.local_date)
+    && (
+      value.notes == null ||
+      (typeof value.notes === 'string' && value.notes.length <= 1000)
+    );
+}
+
+/** @param {unknown} value @returns {value is SymptomRecord} */
+function isSymptomRecord(value) {
+  return isObject(value)
+    && Number.isSafeInteger(value.id)
+    && /** @type {number} */ (value.id) > 0
+    && isSymptomDraft(value)
+    && (
+      value.notes === null ||
+      typeof value.notes === 'string'
+    );
+}
+
+/** @param {unknown} value @returns {value is SymptomRecord[]} */
+function isSymptomList(value) {
+  return Array.isArray(value) && value.every(isSymptomRecord);
+}
+
+
 /**
  * Adapter for the team's API. Values remain in the server's units.
  * @param {{baseUrl?: string, fetchImpl?: typeof fetch, timeoutMs?: number}} options
@@ -271,6 +308,14 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
     return `/api/exercise/${id}`;
   }
 
+  /** @param {number} id */
+  function symptomPath(id) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new ApiError('validation', 'Choose a valid symptom entry.');
+    }
+
+    return `/api/symptoms/${id}`;
+  }
 
   return {
   /** @param {RequestOptions} [options] */
@@ -358,6 +403,66 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
     async deleteExercise(id, options = {}) {
       return request(
         exercisePath(id),
+        (value) => value === undefined,
+        {
+          ...options,
+          method: 'DELETE',
+          empty: true,
+        }
+      );
+    },
+
+    
+    // SYMPTOMS API
+
+    /** @param {ListSymptomsOptions} [options] @returns {Promise<SymptomRecord[]>} */
+    async listSymptoms(options = {}) {
+      if (options.date !== undefined && !isLocalDate(options.date)) {
+        throw new ApiError('validation', 'Choose a valid date.');
+      }
+
+      const query = options.date === undefined
+        ? ''
+        : `?date=${encodeURIComponent(options.date)}`;
+
+      return request(`/api/symptoms${query}`, isSymptomList, options);
+    },
+
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<SymptomRecord>} */
+    async getSymptom(id, options = {}) {
+      return request(symptomPath(id), isSymptomRecord, options);
+    },
+
+    /** @param {SymptomDraft} value @param {RequestOptions} [options] @returns {Promise<SymptomRecord>} */
+    async createSymptom(value, options = {}) {
+      if (!isSymptomDraft(value)) {
+        throw new ApiError('validation', 'Check the symptom before saving.');
+      }
+
+      return request('/api/symptoms', isSymptomRecord, {
+        ...options,
+        method: 'POST',
+        body: value,
+      });
+    },
+
+    /** @param {number} id @param {SymptomDraft} value @param {RequestOptions} [options] @returns {Promise<SymptomRecord>} */
+    async updateSymptom(id, value, options = {}) {
+      if (!isSymptomDraft(value)) {
+        throw new ApiError('validation', 'Check the symptom before saving.');
+      }
+
+      return request(symptomPath(id), isSymptomRecord, {
+        ...options,
+        method: 'PUT',
+        body: value,
+      });
+    },
+
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<void>} */
+    async deleteSymptom(id, options = {}) {
+      return request(
+        symptomPath(id),
         (value) => value === undefined,
         {
           ...options,
