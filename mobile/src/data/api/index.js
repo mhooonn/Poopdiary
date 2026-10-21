@@ -33,5 +33,12 @@ export const createExercise = api.createExercise;
 export const updateExercise = api.updateExercise;
 export const deleteExercise = api.deleteExercise;
 
+// Symptoms API
+export const listSymptoms = api.listSymptoms;
+export const getSymptom = api.getSymptom;
+export const createSymptom = api.createSymptom;
+export const updateSymptom = api.updateSymptom;
+export const deleteSymptom = api.deleteSymptom;
+
 
 export { ApiError, createApiClient, subscribeRecordChanges } from './client';

@@ -5,6 +5,7 @@ const foodRoutes = require("./routes/food");
 const { createBowelRouter } = require("./routes/bowel");
 const drinkRouter = require("./routes/drink");
 const exerciseRouter = require("./routes/exercise");
+const symptomRouter = require("./routes/symptoms");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,10 @@ app.use("/api/drinks", drinkRouter);
 // Exercise routes
 app.use("/api/exercise", exerciseRouter);
 
+// Symptom routes
+app.use("/api/symptoms", symptomRouter);
+
+// Symptoms routes
 app.get("/", (req, res) => {
     res.send("Poop Diary API is running!");
 });
