@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "seed:insights": "node scripts/seed-insights-demo.js",
     "test": "node --test tests/*.test.cjs"
   },
   "keywords": [],

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 
-import { AppText, Button, Card, Screen, useTheme } from '../design-system';
+import { AppText, Button, Card, RecordIcon, Screen, useTheme } from '../design-system';
 import { useDiaryEntries } from '../features/diary/useDiaryEntries';
 import { SOURCE_LABELS } from '../features/diary/model';
 import { formatDate } from '../features/bowel/model';
@@ -141,9 +141,7 @@ export function TodayScreen() {
 
             {/* Water */}
             <Card>
-              <AppText variant="sectionTitle">
-                💧 Water
-              </AppText>
+              <SummaryHeading type="water" title="Water" />
 
               {waterError ? (
                 <AppText>Could not load water data.</AppText>
@@ -185,9 +183,7 @@ export function TodayScreen() {
 
             {/* Other drinks */}
             <Card>
-              <AppText variant="sectionTitle">
-                🥤 Other drinks
-              </AppText>
+              <SummaryHeading type="water" title="Other drinks" />
 
               {waterError ? (
                 <AppText>Could not load drink data.</AppText>
@@ -211,9 +207,7 @@ export function TodayScreen() {
             
             {/* Food */}
             <Card>
-              <AppText variant="sectionTitle">
-                🍽️ Food
-              </AppText>
+              <SummaryHeading type="food" title="Food" />
 
               {foodError ? (
                 <AppText>Could not load food data.</AppText>
@@ -237,9 +231,7 @@ export function TodayScreen() {
 
             {/* Bowel movements and symptoms */}
             <Card>
-              <AppText variant="sectionTitle">
-                📋 Bowel & symptoms
-              </AppText>
+              <SummaryHeading type="bowel" title="Bowel & symptoms" />
 
               {bowelError ? (
                 <AppText>Could not load bowel data.</AppText>
@@ -309,4 +301,13 @@ export function TodayScreen() {
       </View>
     </Screen>
   );
+}
+
+/** @param {{type:'food'|'bowel'|'water',title:string}} props */
+function SummaryHeading({ type, title }) {
+  const theme = useTheme();
+  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+    <RecordIcon type={type} />
+    <AppText variant="sectionTitle">{title}</AppText>
+  </View>;
 }

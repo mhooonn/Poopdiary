@@ -2,12 +2,13 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronRight, Utensils } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 
 import {
   AppText,
   Button,
   Card,
+  RecordIcon,
   Sheet,
   useTheme,
 } from '../../design-system';
@@ -217,15 +218,12 @@ export function FoodDiarySection({
                 width: theme.controls.minimumTouchTarget,
                 height: theme.controls.minimumTouchTarget,
                 borderRadius: theme.radius.md,
-                backgroundColor: theme.colors.surface.subtle,
+                backgroundColor: theme.colors.entry.food.bg,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Utensils
-                size={theme.controls.icon}
-                color={theme.colors.text.primary}
-              />
+              <RecordIcon type="food" />
             </View>
 
             <View
@@ -257,6 +255,7 @@ export function FoodDiarySection({
             <ChevronRight
               size={theme.controls.icon}
               color={theme.colors.text.secondary}
+              strokeWidth={theme.controls.iconStrokeWidth}
             />
           </Pressable>
         ))}

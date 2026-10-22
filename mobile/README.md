@@ -37,7 +37,7 @@ The backend SQLite database is the source of truth. Failed writes retain the for
 
 One owner maintains shared Diary/navigation. Feature owners maintain their forms and API routes. Add new record types through the diary model and API client; do not add separate feature lists or forms to Diary. Old food/drinks preview components remain for compatibility.
 
-**Profile → Developer tools** opens API connection tests and the UI component preview. The preview supports light/dark/system appearance and control states.
+Profile stores the light, dark or system appearance preference and contains daily reminder settings. **Developer tools** opens API connection tests and the UI component preview; the preview covers shared control states.
 
 ## API connection
 

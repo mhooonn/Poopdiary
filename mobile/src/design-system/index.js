@@ -11,3 +11,4 @@ export { Slider } from './components/Slider';
 export { Stepper } from './components/Stepper';
 export { TimeInput } from './components/TimeInput';
 export { NoteField } from './components/NoteField';
+export { RECORD_ICONS, RecordIcon } from './recordVisuals';
