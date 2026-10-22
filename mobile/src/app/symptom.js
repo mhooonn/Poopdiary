@@ -1,2 +1,1 @@
-import { BlankScreen } from '../navigation/BlankScreen';
-export default function SymptomsRoute() { return <BlankScreen title="Symptoms" back />; }
+export { SymptomFormScreen as default } from '../features/symptom/SymptomFormScreen';
