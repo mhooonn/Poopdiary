@@ -11,6 +11,14 @@ npm start -- --go
 
 Scan with Expo Go on the same Wi-Fi. For a browser, use `npm run web`. Stop Metro before reinstalling dependencies.
 
+Local reminders are disabled in Expo Go to avoid native notification module errors. The rest of the app can still be tested there. To test reminders, open your Android emulator and run from `mobile`:
+
+```sh
+npx expo run:android
+```
+
+This builds and installs the app's development build. For later JavaScript changes, use `npx expo start --dev-client` and open **Poop Diary**, rather than Expo Go. Rebuild after changing native dependencies. Metro's port can be any free port; it does not need to match another team member's port.
+
 ## Structure
 
 ```text

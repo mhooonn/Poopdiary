@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { isRunningInExpoGo } from 'expo';
 import { Platform, Pressable, Switch, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { ChevronRight, Settings } from 'lucide-react-native';
@@ -36,6 +37,7 @@ const REPEAT_PRESETS = [
 
 export function ReminderSettings() {
   const theme = useTheme();
+  const canUseNotifications = Platform.OS !== 'web' && !isRunningInExpoGo();
   const [settings, setSettings] = useState(/** @type {ReminderSettings} */ ({
     ...DEFAULT_REMINDER_SETTINGS,
     weekdays: [...DEFAULT_REMINDER_SETTINGS.weekdays],
@@ -144,10 +146,10 @@ export function ReminderSettings() {
     if (saved) setShowRepeatPicker(false);
   }
 
-  const blockedBySystem = access?.granted && !access.channelEnabled;
-  const blockedByPermission = settings.enabled && access && !access.granted;
-  const permissionPermanentlyDenied = access !== null && !access.granted && !access.canAskAgain;
-  const showSystemSettings = Platform.OS !== 'web' && (blockedBySystem || permissionPermanentlyDenied);
+  const blockedBySystem = access?.available && access.granted && !access.channelEnabled;
+  const blockedByPermission = settings.enabled && access?.available && !access.granted;
+  const permissionPermanentlyDenied = access?.available && !access.granted && !access.canAskAgain;
+  const showSystemSettings = canUseNotifications && (blockedBySystem || permissionPermanentlyDenied);
 
   return <Card testID="reminder-settings" style={{ gap: theme.spacing.md }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
@@ -155,15 +157,18 @@ export function ReminderSettings() {
         <AppText variant="sectionTitle">Daily reminder</AppText>
         <AppText variant="caption" tone="secondary">A quiet prompt. No diary details in the notification.</AppText>
       </View>
-      <Switch accessibilityLabel="Enable logging reminder" value={settings.enabled}
-        disabled={busy || Platform.OS === 'web'} onValueChange={toggleEnabled}
-        trackColor={{ false: theme.colors.border.control, true: theme.colors.action.primary.background }}
-        thumbColor={theme.colors.surface.card} />
+      {canUseNotifications
+        ? <Switch accessibilityLabel="Enable logging reminder" value={settings.enabled}
+          disabled={busy} onValueChange={toggleEnabled}
+          trackColor={{ false: theme.colors.border.control, true: theme.colors.action.primary.background }}
+          thumbColor={theme.colors.surface.card} />
+        : <AppText variant="caption" tone="secondary">Build required</AppText>}
     </View>
 
     {Platform.OS === 'web' && <AppText tone="secondary">Enable reminders on an iOS or Android device.</AppText>}
+    {Platform.OS !== 'web' && isRunningInExpoGo() && <AppText tone="secondary">Use the app development build to set up and test local reminders.</AppText>}
 
-    {settings.enabled && <>
+    {settings.enabled && canUseNotifications && <>
       <View style={{ height: theme.controls.borderWidth, backgroundColor: theme.colors.border.default }} />
       <Pressable accessibilityRole="button" accessibilityLabel={`Reminder time, ${settings.time}`}
         onPress={openTimePicker} disabled={busy} testID="reminder-time"
