@@ -6,6 +6,8 @@ const databasePath = process.env.DATABASE_PATH || path.join(__dirname, "..", "di
 const db = new sqlite3.Database(databasePath);
 
 db.serialize(() => {
+
+    // drinks table
     db.run(`
         CREATE TABLE IF NOT EXISTS drinks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

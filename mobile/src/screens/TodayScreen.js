@@ -13,6 +13,7 @@ import {
   summarizeToday,
 } from '../features/today/todaySummary';
 
+// Returns a greeting based on the current time
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 5) return 'Good night';
@@ -25,40 +26,50 @@ export function TodayScreen() {
   const theme = useTheme();
   const router = useRouter();
 
+  // Get today's date in the format used by the diary
   const today = formatDate(new Date());
 
   const { entries, errors, loading, refresh } =
     useDiaryEntries(today);
 
+  // Refresh the diary data whenever the Today screen comes into focus
   useFocusEffect(
     useCallback(() => {
       void refresh();
     }, [refresh])
   );
 
+  // Convert the diary entries into a summary for the Today screen
+  // The summary contains totals and simplified lists for the UI
   const summary = summarizeToday(entries);
 
+  // Check whether loading failed for each section
+  // This allows the UI to show an error in the correct card
   const waterError = errors.some((error) => error.kind === 'water');
   const foodError = errors.some((error) => error.kind === 'food');
   const bowelError = errors.some((error) => error.kind === 'bowel');
   const exersiceError = errors.some((error) => error.kind === 'exercise');
 
+  // Calculate how much of the daily water goal has been reached
   const waterPercent = Math.min(
     100,
     (summary.waterMl / WATER_GOAL_ML) * 100
   );
 
+  // Calculate the remaining water amount
   const waterLeft = Math.max(
     0,
     WATER_GOAL_ML - summary.waterMl
   );
 
+  // Calculate the total amount of all non-water drinks
   let otherDrinksTotal = 0;
 
   for (const drink of summary.otherDrinks) {
     otherDrinksTotal += drink.ml;
   }
 
+  // Navigate to the diary for today's date when the button is pressed
   const openDiary = () => {
     router.push({
       pathname: '/diary',
@@ -303,6 +314,8 @@ export function TodayScreen() {
   );
 }
 
+// Reusable heading for summary cards.
+// Displays the appropriate record icon and the section title.
 /** @param {{type:'food'|'bowel'|'water',title:string}} props */
 function SummaryHeading({ type, title }) {
   const theme = useTheme();
