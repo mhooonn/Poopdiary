@@ -1,7 +1,9 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Platform, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
+import * as ImagePicker from 'expo-image-picker';
 
 import {
   AppText,
@@ -16,6 +18,8 @@ import {
 import { createFood, listFood, updateFood } from '../../data/api';
 import { useRecordFeedback } from '../../navigation/RecordFeedbackProvider';
 import { useWriteGuard } from '../../navigation/useWriteGuard';
+import { FoodPhotoField } from './components/FoodPhotoField';
+import { foodPhotoStore } from './photoStore';
 
 /** @typedef {{id:number,food_name:string,meal_type:string|null,date:string,time:string|null,notes:string|null}} FoodRecord */
 
@@ -55,6 +59,15 @@ export function FoodFormScreen() {
   const [date, setDate] = useState(today());
   const [time, setTime] = useState(currentTime());
   const [notes, setNotes] = useState('');
+  const [photoDraft, setPhotoDraft] = useState(/** @type {{name:string,uri:string}|null} */ (null));
+  const [existingPhotoUri, setExistingPhotoUri] = useState(/** @type {string|null} */ (null));
+  const [photoRecordId, setPhotoRecordId] = useState(/** @type {number|null} */ (null));
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const [cameraSettingsRequired, setCameraSettingsRequired] = useState(false);
+  const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
+  const [savedFoodId, setSavedFoodId] = useState(/** @type {number|null} */ (null));
+  const [photoCommitFailed, setPhotoCommitFailed] = useState(false);
 
   const [editingId, setEditingId] = useState(
     /** @type {number|null} */ (null)
@@ -69,11 +82,19 @@ export function FoodFormScreen() {
   const writing = useRef(false);
   useWriteGuard(saving, writing);
   const mounted = useRef(true);
+  const photoDraftRef = useRef(/** @type {{name:string,uri:string}|null} */ (null));
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
+  useEffect(() => () => {
+    const draft = photoDraftRef.current;
+    if (draft) void foodPhotoStore.discardDraft(draft.name).catch(() => undefined);
+  }, []);
+
   const editing = editParam !== '';
+  const currentExistingPhotoUri = photoRecordId === editingId ? existingPhotoUri : null;
+  const photoLoading = editingId !== null && photoRecordId !== editingId;
   const exit = () => {
-    if (writing.current) return;
+    if (writing.current || savedFoodId !== null) return;
     if (editing) router.dismissTo({ pathname: '/diary', params: { date: recordDate } });
     else router.dismissTo('/');
   };
@@ -88,6 +109,155 @@ export function FoodFormScreen() {
     setNotes(record.notes || '');
     setRecordDate(record.date);
     setError('');
+  }
+
+  useEffect(() => {
+    if (editingId === null) return undefined;
+
+    let active = true;
+    void foodPhotoStore.getPhotoUri(editingId)
+      .then((uri) => {
+        if (active) {
+          setExistingPhotoUri(uri);
+          setPhotoRecordId(editingId);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setPhotoError('Could not load the saved meal photo.');
+          setPhotoRecordId(editingId);
+        }
+      });
+    return () => { active = false; };
+  }, [editingId]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return undefined;
+    let active = true;
+    void ImagePicker.getPendingResultAsync().then((result) => {
+      if (!active || !result) return;
+      if ('canceled' in result && !result.canceled && result.assets?.[0]) {
+        void savePickedPhoto(result.assets[0]);
+      } else if (!('canceled' in result)) {
+        setPhotoError('The camera could not return the meal photo. Try again.');
+      }
+    }).catch(() => {
+      if (active) setPhotoError('The camera could not return the meal photo. Try again.');
+    });
+    return () => { active = false; };
+  }, []);
+
+  /** @param {import('expo-image-picker').ImagePickerAsset} asset */
+  async function savePickedPhoto(asset) {
+    setPhotoBusy(true);
+    setPhotoError('');
+    try {
+      const name = await foodPhotoStore.saveDraft(asset.uri, asset.width, asset.height);
+      const draft = { name, uri: foodPhotoStore.draftUri(name) };
+      if (!mounted.current) {
+        await foodPhotoStore.discardDraft(name);
+        return;
+      }
+      const previous = photoDraftRef.current;
+      photoDraftRef.current = draft;
+      setPhotoDraft(draft);
+      setRemoveExistingPhoto(false);
+      if (previous) void foodPhotoStore.discardDraft(previous.name).catch(() => undefined);
+    } catch (failure) {
+      if (mounted.current) setPhotoError(errorMessage(failure));
+    } finally {
+      if (mounted.current) setPhotoBusy(false);
+    }
+  }
+
+  async function takePhoto() {
+    if (photoBusy || saving || savedFoodId !== null) return;
+    setPhotoBusy(true);
+    setPhotoError('');
+    setCameraSettingsRequired(false);
+    try {
+      if (Platform.OS !== 'web') {
+        let permission = await ImagePicker.getCameraPermissionsAsync();
+        if (!permission.granted) permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          setCameraSettingsRequired(!permission.canAskAgain);
+          setPhotoError('Camera access is off. Allow it to take a meal photo.');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], cameraType: ImagePicker.CameraType.back, allowsEditing: false, quality: 0.9, exif: false });
+      if (!result.canceled && result.assets?.[0]) await savePickedPhoto(result.assets[0]);
+    } catch (failure) {
+      setPhotoError(errorMessage(failure));
+    } finally {
+      if (mounted.current) setPhotoBusy(false);
+    }
+  }
+
+  async function openCameraSettings() {
+    try {
+      await Linking.openSettings();
+    } catch {
+      setPhotoError('Could not open app settings. Open camera permissions from your device settings.');
+    }
+  }
+
+  async function removePhoto() {
+    if (photoBusy || saving || savedFoodId !== null) return;
+    const draft = photoDraftRef.current;
+    setPhotoError('');
+    if (draft) {
+      try {
+        await foodPhotoStore.discardDraft(draft.name);
+        photoDraftRef.current = null;
+        setPhotoDraft(null);
+        setRemoveExistingPhoto(false);
+      } catch {
+        setPhotoError('Could not remove the meal photo from this device. Try again.');
+      }
+    } else {
+      setRemoveExistingPhoto(Boolean(currentExistingPhotoUri));
+    }
+  }
+
+  /** @param {number} foodId */
+  async function syncLocalPhoto(foodId) {
+    const draft = photoDraftRef.current;
+    if (draft) {
+      await foodPhotoStore.attachDraft(foodId, draft.name);
+      photoDraftRef.current = null;
+      setPhotoDraft(null);
+          setExistingPhotoUri(null);
+      setPhotoRecordId(foodId);
+      setRemoveExistingPhoto(false);
+    } else if (removeExistingPhoto) {
+      await foodPhotoStore.removePhoto(foodId);
+      setExistingPhotoUri(null);
+      setRemoveExistingPhoto(false);
+    }
+  }
+
+  /** @param {string} recordDateValue */
+  function finishSave(recordDateValue) {
+    if (!mounted.current) return;
+    notify(editing ? 'Changes saved' : 'Food entry saved');
+    if (editing) router.dismissTo({ pathname: '/diary', params: { date: recordDateValue } });
+    else router.dismissTo('/');
+  }
+
+  async function continueWithoutNewPhoto() {
+    if (savedFoodId === null || !photoDraftRef.current || removeExistingPhoto) return;
+    const draft = photoDraftRef.current;
+    try {
+      await foodPhotoStore.discardDraft(draft.name);
+    } catch {
+      setPhotoError('The entry is saved, but the unfinished photo could not be removed.');
+      return;
+    }
+    photoDraftRef.current = null;
+    setPhotoDraft(null);
+    finishSave(date);
   }
 
   // Support opening the form from Diary with /food?edit=123
@@ -131,6 +301,25 @@ export function FoodFormScreen() {
     if (writing.current || (editing && (loadingEdit || loadError !== '' || editingId === null))) return;
     setError('');
 
+    if (savedFoodId !== null) {
+      writing.current = true;
+      setSaving(true);
+      try {
+        await syncLocalPhoto(savedFoodId);
+        setPhotoCommitFailed(false);
+        finishSave(date);
+      } catch {
+        setPhotoError(photoDraftRef.current
+          ? 'Food details were saved, but the meal photo could not be stored on this device. Try again.'
+          : 'Food details were saved, but the photo could not be removed from this device. Try again.');
+        setPhotoCommitFailed(true);
+      } finally {
+        writing.current = false;
+        if (mounted.current) setSaving(false);
+      }
+      return;
+    }
+
     if (!foodName.trim()) {
       setError('Please enter a food name.');
       return;
@@ -167,17 +356,22 @@ export function FoodFormScreen() {
     setSaving(true);
 
     try {
-      if (editingId !== null) {
-        await updateFood(editingId, food);
-      } else {
-        await createFood(food);
+      const response = editingId !== null
+        ? await updateFood(editingId, food)
+        : await createFood(food);
+
+      try {
+        await syncLocalPhoto(response.id);
+      } catch {
+        setSavedFoodId(response.id);
+        setPhotoCommitFailed(true);
+        setPhotoError(photoDraftRef.current
+          ? 'Food details were saved, but the meal photo could not be stored on this device. Try again.'
+          : 'Food details were saved, but the photo could not be removed from this device. Try again.');
+        return;
       }
 
-      if (mounted.current) {
-        notify(editing ? 'Changes saved' : 'Food entry saved');
-        if (editing) router.dismissTo({ pathname: '/diary', params: { date } });
-        else router.dismissTo('/');
-      }
+      finishSave(date);
     } catch (failure) {
       if (mounted.current) setError(errorMessage(failure));
     } finally {
@@ -223,9 +417,21 @@ export function FoodFormScreen() {
               accessibilityLabel="Food name"
               testID="food-name"
               maxLength={150}
-              editable={!saving}
+              editable={!saving && savedFoodId === null}
             />
           </Card>
+
+          {Platform.OS !== 'web' && <FoodPhotoField
+            uri={photoDraft?.uri ?? (removeExistingPhoto ? null : currentExistingPhotoUri)}
+            loading={photoLoading}
+            busy={photoBusy || saving || savedFoodId !== null}
+            actionLoading={photoBusy}
+            error={photoError}
+            settingsRequired={cameraSettingsRequired}
+            onTakePhoto={() => void takePhoto()}
+            onRemove={() => void removePhoto()}
+            onOpenSettings={() => void openCameraSettings()}
+          />}
 
           <Card>
             <AppText variant="label">Meal type</AppText>
@@ -237,7 +443,7 @@ export function FoodFormScreen() {
                   label={meal}
                   selected={mealType === meal}
                   onPress={() => setMealType(meal)}
-                  disabled={saving}
+                  disabled={saving || savedFoodId !== null}
                 />
               ))}
             </View>
@@ -255,7 +461,7 @@ export function FoodFormScreen() {
               accessibilityLabel="Food date"
               testID="food-date"
               maxLength={10}
-              editable={!saving}
+              editable={!saving && savedFoodId === null}
             />
           </Card>
               
@@ -273,7 +479,7 @@ export function FoodFormScreen() {
                 testID="food-time"
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
-                editable={!saving}
+                editable={!saving && savedFoodId === null}
             />
             </Card>
 
@@ -285,21 +491,28 @@ export function FoodFormScreen() {
               value={notes}
               onChange={setNotes}
               testID="food-notes"
-              disabled={saving}
+              disabled={saving || savedFoodId !== null}
             />
           </Card>
 
           {error !== '' && (
-            <AppText tone="danger">{error}</AppText>
+            <AppText tone="danger" accessibilityLiveRegion="polite" testID="food-save-error">{error}</AppText>
           )}
 
           <Button
-            label={editing ? 'Save changes' : 'Save food'}
+            label={savedFoodId !== null ? 'Retry photo save' : (editing ? 'Save changes' : 'Save food')}
             onPress={() => void handleSave()}
             loading={saving}
-            disabled={saving}
+            disabled={saving || photoBusy || photoLoading}
             testID="food-save"
           />
+          {photoCommitFailed && photoDraft && !removeExistingPhoto && <Button
+            label={currentExistingPhotoUri ? 'Keep previous photo' : 'Continue without photo'}
+            variant="secondary"
+            onPress={() => void continueWithoutNewPhoto()}
+            disabled={saving}
+            testID="food-photo-continue"
+          />}
 
         </>
       )}

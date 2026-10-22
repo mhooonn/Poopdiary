@@ -16,3 +16,7 @@ exports.diaryModelModule = Promise.all([
   fs.readFile(path.join(__dirname, '../src/features/diary/model.js'), 'utf8'),
   modelUrl,
 ]).then(([source, url]) => import(moduleUrl(source.replace("from '../bowel/model'", `from '${url}'`))));
+
+exports.foodPhotoModelModule = fs.readFile(path.join(__dirname, '../src/features/food/photoModel.js'), 'utf8')
+  .then(moduleUrl)
+  .then((url) => import(url));
