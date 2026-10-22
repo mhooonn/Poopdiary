@@ -1,29 +1,15 @@
 
 import { Pressable, View } from 'react-native';
-import {
-  ChevronRight,
-  CupSoda,
-  Dumbbell,
-  Utensils,
-} from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 
-import { AppText, useTheme } from '../../design-system';
-import { StoolShape } from '../bowel/components/StoolShape';
+import { AppText, RecordIcon, useTheme } from '../../design-system';
 import { SOURCE_LABELS } from './model';
 
 /** @param {{entry:import('./model').DiaryEntry,onPress:()=>void}} props */
 export function DiaryEntryCard({ entry, onPress }) {
   const theme = useTheme();
 
-  const color = entry.kind === 'water'
-    ? theme.colors.beverage[entry.record.drink_type]
-    : theme.colors.entry[entry.kind];
-
-  const Icon = entry.kind === 'food'
-    ? Utensils
-    : entry.kind === 'exercise'
-      ? Dumbbell
-      : CupSoda;
+  const color = theme.colors.entry[entry.kind];
 
   return (
     <Pressable
@@ -55,14 +41,7 @@ export function DiaryEntryCard({ entry, onPress }) {
           backgroundColor: color.bg,
         }}
       >
-        {entry.kind === 'bowel' ? (
-          <StoolShape type={entry.record.stool_type} />
-        ) : (
-          <Icon
-            size={theme.controls.icon}
-            color={color.fg}
-          />
-        )}
+        <RecordIcon type={entry.kind} color={color.fg} />
       </View>
 
       <View
@@ -106,6 +85,7 @@ export function DiaryEntryCard({ entry, onPress }) {
       <ChevronRight
         size={theme.controls.smallIcon}
         color={theme.colors.text.secondary}
+        strokeWidth={theme.controls.iconStrokeWidth}
       />
     </Pressable>
   );

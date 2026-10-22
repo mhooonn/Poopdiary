@@ -1,24 +1,41 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, useColorScheme } from 'react-native';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { AccessibilityInfo, useColorScheme, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { darkTheme, lightTheme } from './theme';
+import { createAppearanceStore } from './appearanceStorage';
 
 /** @typedef {'light' | 'dark' | 'system'} Appearance */
-/** @typedef {{appearance: Appearance, setAppearance: import('react').Dispatch<import('react').SetStateAction<Appearance>>}} AppearanceState */
+/** @typedef {{appearance: Appearance, setAppearance:(appearance:Appearance)=>Promise<void>}} AppearanceState */
 
 const ThemeContext = createContext(/** @type {import('./theme').Theme | null} */ (null));
 const AppearanceContext = createContext(/** @type {AppearanceState | null} */ (null));
 const ReducedMotionContext = createContext(false);
+const appearanceStore = createAppearanceStore(AsyncStorage);
 
 /** @param {{children: import('react').ReactNode, initialAppearance?: Appearance}} props */
 export function ThemeProvider({ children, initialAppearance = 'system' }) {
   const systemAppearance = useColorScheme();
   const [appearance, setAppearance] = useState(initialAppearance);
+  const [appearanceReady, setAppearanceReady] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const theme = (appearance === 'system' ? systemAppearance : appearance) === 'dark' ? darkTheme : lightTheme;
-  const appearanceState = useMemo(() => ({ appearance, setAppearance }), [appearance]);
+  const saveAppearance = useCallback(/** @type {(value:Appearance)=>Promise<void>} */ (async (value) => {
+    const saved = await appearanceStore.save(value);
+    setAppearance(saved);
+  }), []);
+  const appearanceState = useMemo(() => ({ appearance, setAppearance: saveAppearance }), [appearance, saveAppearance]);
+
+  useEffect(() => {
+    let active = true;
+    void appearanceStore.read(initialAppearance)
+      .then((saved) => { if (active) setAppearance(saved); })
+      .catch(() => undefined)
+      .finally(() => { if (active) setAppearanceReady(true); });
+    return () => { active = false; };
+  }, [initialAppearance]);
 
   useEffect(() => {
     let active = true;
@@ -31,15 +48,17 @@ export function ThemeProvider({ children, initialAppearance = 'system' }) {
 
   useEffect(() => {
     // Match the native window to the screen, including exposed safe-area edges.
+    if (!appearanceReady) return;
     void SystemUI.setBackgroundColorAsync(theme.colors.surface.canvas).catch(() => undefined);
-  }, [theme]);
+  }, [appearanceReady, theme]);
 
   return (
     <AppearanceContext.Provider value={appearanceState}>
       <ThemeContext.Provider value={theme}>
         <ReducedMotionContext.Provider value={reducedMotion}>
-          <StatusBar style={theme.isDark ? 'light' : 'dark'} />
-          {children}
+          {appearanceReady
+            ? <><StatusBar style={theme.isDark ? 'light' : 'dark'} />{children}</>
+            : <View testID="theme-loading" style={{ flex: 1, backgroundColor: theme.colors.surface.canvas }} />}
         </ReducedMotionContext.Provider>
       </ThemeContext.Provider>
     </AppearanceContext.Provider>

@@ -135,12 +135,12 @@ function BowelEditorForm({ record }) {
           {STOOL_TYPES.filter((option) => option.code !== null).map((option) => <View key={option.code} style={cell(columns)}>
             <Choice label={option.label} badge={String(option.code)} layout="tile" density="compact" icon={<StoolShape type={option.code} />}
               selected={form.stoolType === option.code} onPress={() => patch({ stoolType: option.code })} disabled={saving}
-              style={{ minHeight: theme.controls.bowelTileHeight, height: '100%' }} testID={`bowel-type-${option.code}`} />
+              style={{ minHeight: theme.controls.bowelTileHeight }} testID={`bowel-type-${option.code}`} />
           </View>)}
           <View style={cell(columns)}><Choice label="Not sure" layout="tile" density="compact" badge="?"
             icon={<AppText variant="pageTitle" style={{ color: theme.colors.entry.bowel.fg }}>?</AppText>}
             selected={form.stoolType === null} onPress={() => patch({ stoolType: null })} disabled={saving}
-            style={{ minHeight: theme.controls.bowelTileHeight, height: '100%' }} testID="bowel-type-unknown" /></View>
+            style={{ minHeight: theme.controls.bowelTileHeight }} testID="bowel-type-unknown" /></View>
         </View>
         <Button label={timeLabel} variant="secondary" icon={<Clock3 size={theme.controls.icon} color={theme.colors.text.primary} />} onPress={() => setSheet('time')} disabled={saving} testID="bowel-time" />
         <Button label="Shape guide" variant="text" onPress={() => setSheet('guide')} disabled={saving} />

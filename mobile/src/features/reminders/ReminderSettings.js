@@ -147,7 +147,7 @@ export function ReminderSettings() {
   const blockedBySystem = access?.granted && !access.channelEnabled;
   const blockedByPermission = settings.enabled && access && !access.granted;
   const permissionPermanentlyDenied = access !== null && !access.granted && !access.canAskAgain;
-  const showSystemSettings = blockedBySystem || permissionPermanentlyDenied;
+  const showSystemSettings = Platform.OS !== 'web' && (blockedBySystem || permissionPermanentlyDenied);
 
   return <Card testID="reminder-settings" style={{ gap: theme.spacing.md }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>

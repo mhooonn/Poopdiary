@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, Button, Card, Choice, NoteField, Screen, Slider, Stepper, useAppearance, useTheme } from '../design-system';
+import { AppText, Button, Card, Choice, NoteField, Screen, Slider, Stepper, useTheme } from '../design-system';
 
-const appearances = /** @type {const} */ (['light', 'dark', 'system']);
 const severities = /** @type {const} */ (['mild', 'moderate', 'severe']);
 
 /** A working UI reference for the team, separate from future diary features. */
@@ -12,7 +11,6 @@ const severities = /** @type {const} */ (['mild', 'moderate', 'severe']);
 export function ComponentsScreen({ onBack } = {}) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { appearance, setAppearance } = useAppearance();
   const [loading, setLoading] = useState(false);
   const [disabled, setDisabled] = useState(false);
   const [selected, setSelected] = useState(false);
@@ -42,15 +40,6 @@ export function ComponentsScreen({ onBack } = {}) {
 
   return <View style={{ flex: 1, backgroundColor: theme.colors.surface.canvas }}>
     <Screen title="UI components" onBack={onBack} testID="components-screen">
-      <View style={{ gap: theme.spacing.sm }}>
-        <AppText variant="sectionTitle" accessibilityRole="header">Appearance</AppText>
-        <View accessibilityRole="radiogroup" accessibilityLabel="Appearance" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-          {appearances.map((value) => <View key={value} style={{ flexGrow: 1, flexBasis: theme.controls.minimumTouchTarget * 2 }}>
-            <Choice label={value === 'light' ? 'Light' : value === 'dark' ? 'Dark' : 'System'} density="compact" selected={appearance === value} onPress={() => setAppearance(value)} testID={`appearance-${value}`} />
-          </View>)}
-        </View>
-      </View>
-
       <Card>
         <AppText variant="sectionTitle" accessibilityRole="header">Colors</AppText>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>

@@ -31,6 +31,7 @@ const shared = {
     bowelTileHeight: 124,
     icon: 20,
     smallIcon: 16,
+    iconStrokeWidth: 1.9,
     borderWidth: 1,
     selectedBorderWidth: 2,
     contentWidth: 600,
