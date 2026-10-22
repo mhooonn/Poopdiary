@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
+import { isRunningInExpoGo } from 'expo';
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Bell } from 'lucide-react-native';
 
 import { apiBaseUrl } from '../config/api';
@@ -27,7 +28,7 @@ export function DeveloperScreen({ onBack }) {
     void getNotificationDiagnostics().then((status) => {
       if (!active) return;
       setReminderStatus(!status.available
-        ? 'Available on iOS and Android.'
+        ? (isRunningInExpoGo() ? 'Use the app development build to test local notifications.' : 'Use an iOS or Android device to test local notifications.')
         : `${status.granted && status.channelEnabled ? 'Allowed' : 'Not allowed'} · ${status.pending} pending`);
     }).catch(() => { if (active) setReminderStatus('Could not read notification status.'); });
     return () => { active = false; };
@@ -93,7 +94,8 @@ export function DeveloperScreen({ onBack }) {
       <AppText variant="sectionTitle" accessibilityRole="header">Local notifications</AppText>
       <AppText variant="caption" tone="secondary" accessibilityLiveRegion="polite">{reminderStatus}</AppText>
       <Button label="Send test notification" variant="secondary" icon={<Bell size={theme.controls.icon} color={theme.colors.text.primary} />}
-        loading={testingReminder} onPress={() => void sendReminderTest()} testID="send-notification-test" />
+        loading={testingReminder} disabled={Platform.OS === 'web' || isRunningInExpoGo()}
+        onPress={() => void sendReminderTest()} testID="send-notification-test" />
     </Card>
     <Card>
       <AppText variant="sectionTitle" accessibilityRole="header">API connection</AppText>
