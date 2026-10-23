@@ -40,5 +40,12 @@ export const createSymptom = api.createSymptom;
 export const updateSymptom = api.updateSymptom;
 export const deleteSymptom = api.deleteSymptom;
 
+// Sleep API
+export const listSleep = api.listSleep;
+export const getSleep = api.getSleep;
+export const createSleep = api.createSleep;
+export const updateSleep = api.updateSleep;
+export const deleteSleep = api.deleteSleep;
+
 
 export { ApiError, createApiClient, subscribeRecordChanges } from './client';

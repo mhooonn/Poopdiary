@@ -6,11 +6,13 @@ import {
   deleteFood,
   deleteDrink,
   deleteExercise,
+  deleteSleep,
 } from '../../data/api';
 import { useBowel } from '../bowel/BowelProvider';
-import { EFFORTS, LEVELS, PAIN_LOCATIONS, STOOL_TYPES, SYMPTOMS } from '../bowel/model';
+import { EFFORTS, LEVELS, PAIN_LOCATIONS, STOOL_TYPES, SYMPTOMS, formatTime } from '../bowel/model';
 import { useRecordFeedback } from '../../navigation/RecordFeedbackProvider';
-import { editDestination, SOURCE_LABELS } from './model';
+import { editDestination, SOURCE_LABELS, formatDuration, MORNING_ENERGY_LABELS,
+  SLEEP_QUALITY_LABELS, sleepMinutes, } from './model';
 import { foodPhotoStore } from '../food/photoStore';
 
 /** @param {{entry:import('./model').DiaryEntry,onClose:()=>void,onDeleted:(entry:import('./model').DiaryEntry)=>void}} props */
@@ -41,6 +43,8 @@ export function DiaryEntryDetails({ entry, onClose, onDeleted }) {
         }
       } else if (entry.kind === 'exercise') {
         await deleteExercise(entry.id);
+      } else if (entry.kind === 'sleep') {
+        await deleteSleep(entry.id);
       } else {
         await deleteDrink(entry.id);
       }
@@ -103,6 +107,34 @@ function EntryBody({ entry }) {
       ) : null}
     </>
   );
+
+    if (entry.kind === 'sleep') {
+    const sleep = entry.record;
+    return (
+      <>
+        <AppText variant="label">Slept</AppText>
+        <AppText>
+          {formatTime(new Date(sleep.sleep_start))} – {formatTime(new Date(sleep.sleep_end))} · {formatDuration(sleepMinutes(sleep))}
+        </AppText>
+        <AppText variant="label">Sleep quality</AppText>
+        <AppText>
+          {sleep.quality === null ? 'Not recorded' : `${sleep.quality}/5 · ${SLEEP_QUALITY_LABELS[sleep.quality] ?? ''}`}
+        </AppText>
+        <AppText variant="label">Wake-ups</AppText>
+        <AppText>{sleep.awakenings}</AppText>
+        <AppText variant="label">Morning energy</AppText>
+        <AppText>
+          {sleep.morning_energy === null ? 'Not recorded' : `${sleep.morning_energy}/5 · ${MORNING_ENERGY_LABELS[sleep.morning_energy] ?? ''}`}
+        </AppText>
+        {sleep.notes ? (
+          <Card>
+            <AppText variant="label">Note</AppText>
+            <AppText>{sleep.notes}</AppText>
+          </Card>
+        ) : null}
+      </>
+    );
+  }
 
   const record = entry.record;
   /** @param {string|null} value */

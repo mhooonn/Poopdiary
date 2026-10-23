@@ -7,6 +7,7 @@ import {
   listBowel,
   listDrinks,
   listExercise,
+  listSleep,
 } from '../../data/api';
 
 import { diaryEntries } from './model';
@@ -28,6 +29,7 @@ export function useDiaryEntries(date) {
         bowel: [],
         water: [],
         exercise: [],
+        sleep: [],
       },
       errors: [],
       loading: true,
@@ -61,12 +63,13 @@ export function useDiaryEntries(date) {
 
     const options = { signal: controller.signal };
 
-    const [food, bowel, water, exercise] =
+    const [food, bowel, water, exercise, sleep] =
       await Promise.allSettled([
         listFood(options),
         listBowel(options),
         listDrinks(options),
         listExercise(options),
+        listSleep(options),
       ]);
 
     if (
@@ -84,6 +87,7 @@ export function useDiaryEntries(date) {
       ['bowel', bowel],
       ['water', water],
       ['exercise', exercise],
+      ['sleep', sleep],
     ]);
 
     for (const [kind, result] of results) {
@@ -105,6 +109,7 @@ export function useDiaryEntries(date) {
         exercise: exercise.status === 'fulfilled'
           ? exercise.value
           : [],
+        sleep: sleep.status === 'fulfilled' ? sleep.value : [],
       },
       errors,
       loading: false,
@@ -140,6 +145,9 @@ export function useDiaryEntries(date) {
         ),
         exercise: (current.records.exercise ?? []).filter(
           (row) => entry.kind !== 'exercise' || row.id !== entry.id
+        ),
+        sleep: (current.records.sleep ?? []).filter(
+          (row) => entry.kind !== 'sleep' || row.id !== entry.id
         ),
       },
     }));

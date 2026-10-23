@@ -198,7 +198,8 @@ function collectSymptoms(entries) {
  *   exercise: TimelineItem[],
  *   movements: TimelineItem[],
  *   bowelCount: number,
- *   symptoms: SymptomItem[]
+ *   symptoms: SymptomItem[],
+ *   sleep: TimelineItem[],
  * }}
  */
 export function summarizeToday(entries) {
@@ -207,6 +208,7 @@ export function summarizeToday(entries) {
   const bowel = entries.filter((entry) => entry.kind === 'bowel');
   const drinks = entries.filter((entry) => entry.kind === 'water');
   const exercise = entries.filter((entry) => entry.kind === 'exercise');
+    const sleep = entries.filter((entry) => entry.kind === 'sleep');
 
   // Calculate the total amount of plain water separately from other drinks
   let waterMl = 0;
@@ -253,6 +255,14 @@ export function summarizeToday(entries) {
     detail: entry.summary,
   }));
 
+    // Convert sleep entries into timeline items in the same way.
+  const sleepItems = sleep.map((entry) => ({
+    key: entry.key,
+    time: entry.time,
+    title: entry.title,
+    detail: entry.summary,
+  }));
+
   // Convert bowel movement entries into timeline items.
   /** @type {TimelineItem[]} */
   const movements = bowel.map((entry) => {
@@ -291,6 +301,7 @@ export function summarizeToday(entries) {
     movements,
     bowelCount: movements.length,
     symptoms: collectSymptoms(entries),
-    exercise: exercises
+    exercise: exercises,
+    sleep: sleepItems,
   };
 }

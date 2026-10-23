@@ -7,19 +7,20 @@ import {
   formatTime,
 } from '../bowel/model';
 
-/** @typedef {'food'|'bowel'|'water'|'exercise'} DiaryKind */
+/** @typedef {'food'|'bowel'|'water'|'exercise'|'sleep'} DiaryKind */
 
 /** @typedef {{key: string, id: number, localDate: string, time: string | null, title: string, summary: string}} EntryBase */
 
-/** @typedef {(EntryBase & {kind:'food',record:import('../../data/api/client').FoodRecord}) | (EntryBase & {kind:'bowel',record:import('../bowel/model').BowelRecord}) | (EntryBase & {kind:'water',record:import('../../data/api/client').DrinkRecord}) | (EntryBase & {kind:'exercise',record:import('../../data/api/client').ExerciseRecord})} DiaryEntry */
+/** @typedef {(EntryBase & {kind:'food',record:import('../../data/api/client').FoodRecord}) | (EntryBase & {kind:'bowel',record:import('../bowel/model').BowelRecord}) | (EntryBase & {kind:'water',record:import('../../data/api/client').DrinkRecord}) | (EntryBase & {kind:'exercise',record:import('../../data/api/client').ExerciseRecord}) | (EntryBase & {kind:'sleep',record:import('../../data/api/client').SleepRecord})} DiaryEntry */
 
-/** @typedef {{food: import('../../data/api/client').FoodRecord[], bowel: import('../bowel/model').BowelRecord[], water: import('../../data/api/client').DrinkRecord[], exercise?: import('../../data/api/client').ExerciseRecord[] }} DiaryRecords */
+/** @typedef {{food: import('../../data/api/client').FoodRecord[], bowel: import('../bowel/model').BowelRecord[], water: import('../../data/api/client').DrinkRecord[], exercise?: import('../../data/api/client').ExerciseRecord[], sleep?: import('../../data/api/client').SleepRecord[] }} DiaryRecords */
 
 export const SOURCE_LABELS = {
   food: 'Food',
   bowel: 'Bowel',
   water: 'Drinks',
   exercise: 'Exercise',
+  sleep: 'Sleep',
 };
 
 export const DRINK_LABELS = {
@@ -124,6 +125,48 @@ export function exerciseEntry(record) {
   };
 }
 
+/** @type {Record<number,string>} */
+export const SLEEP_QUALITY_LABELS = { 1: 'Poor', 2: 'Fair', 3: 'OK', 4: 'Good', 5: 'Great' };
+
+/** @type {Record<number,string>} */
+export const MORNING_ENERGY_LABELS = { 1: 'Exhausted', 2: 'Tired', 3: 'OK', 4: 'Rested', 5: 'Energised' };
+
+/** @param {number} minutes */
+export function formatDuration(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+/** @param {import('../../data/api/client').SleepRecord} record */
+export function sleepMinutes(record) {
+  return Math.round(
+    (new Date(record.sleep_end).getTime() - new Date(record.sleep_start).getTime()) / 60000
+  );
+}
+
+/** @param {import('../../data/api/client').SleepRecord} record
+ *  @returns {DiaryEntry} */
+export function sleepEntry(record) {
+  const wokeAt = new Date(record.sleep_end);
+  return {
+    key: `sleep:${record.id}`,
+    kind: 'sleep',
+    id: record.id,
+    localDate: record.local_date,
+    time: formatTime(wokeAt),
+    title: formatDuration(sleepMinutes(record)),
+    summary: [
+      record.quality === null ? null : `Quality ${record.quality}/5`,
+      record.awakenings === 0
+        ? 'No wake-ups'
+        : `${record.awakenings} wake-up${record.awakenings === 1 ? '' : 's'}`,
+    ].filter(Boolean).join(' · '),
+    record,
+  };
+}
+
 /**
  * Combine all records into one chronological Diary.
  * @param {DiaryRecords} records
@@ -136,6 +179,7 @@ export function diaryEntries(records, date) {
     ...records.bowel.map(bowelEntry),
     ...records.water.map(drinkEntry),
     ...(records.exercise ?? []).map(exerciseEntry),
+    ...(records.sleep ?? []).map(sleepEntry),
   ]
     .filter((entry) => entry.localDate === date)
     .sort(
@@ -147,11 +191,12 @@ export function diaryEntries(records, date) {
 
 /** @param {DiaryEntry} entry */
 export function editDestination(entry) {
-  const pathname = /** @type {'/food'|'/bowel'|'/water'|'/exercise'} */ ({
+  const pathname = /** @type {'/food'|'/bowel'|'/water'|'/exercise'|'/sleep'} */ ({
     food: '/food',
     bowel: '/bowel',
     water: '/water',
     exercise: '/exercise',
+    sleep: '/sleep',
   }[entry.kind]);
 
   return {
