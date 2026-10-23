@@ -1,8 +1,13 @@
+// ExerciseFormScreen
+// Form screen for logging a new exercise entry or editing an existing one.
+// Create mode:  /exercise
+// Edit mode:    /exercise?edit=ID  (opened from the Diary)
 
 import { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+// Shared UI components from our design system, so every screen looks the same
 import {
   AppText,
   Button,
@@ -13,14 +18,18 @@ import {
   useTheme,
 } from '../../design-system';
 
+// Backend API functions: create a new entry, load one by id, update an existing one
 import {
   createExercise,
   getExercise,
   updateExercise,
 } from '../../data/api';
+// Shows the "saved" message (toast) on the next screen after we navigate away
 import { useRecordFeedback } from '../../navigation/RecordFeedbackProvider';
+// Hook that protects the screen from being left while a save is in progress
 import { useWriteGuard } from '../../navigation/useWriteGuard';
 
+// Options shown as radio-style choices in the form
 const EXERCISE_TYPES = [
   'Walking',
   'Running',
@@ -32,6 +41,7 @@ const EXERCISE_TYPES = [
 ];
 
 // Current local date in YYYY-MM-DD
+// (getMonth() starts from 0, so we add 1; padStart makes "5" into "05")
 function today() {
   const now = new Date();
   const year = now.getFullYear();
@@ -48,6 +58,8 @@ function currentTime() {
   return `${hours}:${minutes}`;
 }
 
+// Turns any thrown value into a message we can show the user.
+// Real Error objects use their own message, anything else gets a generic one.
 /** @param {unknown} error */
 function errorMessage(error) {
   return error instanceof Error
@@ -55,12 +67,18 @@ function errorMessage(error) {
     : 'Something went wrong.';
 }
 
+// Checks that the date is in YYYY-MM-DD format AND is a real calendar date.
+// The second check catches dates like 2026-02-31, which JavaScript would
+// silently roll over to March 3rd.
 /** @param {string} value */
 function validDate(value) {
+  // Format check first
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
 
+  // Noon is used so time zone / daylight saving shifts can't change the day
   const parsed = new Date(`${value}T12:00:00`);
 
+  // If the parsed year/month/day match the input, the date really exists
   return (
     Number.isFinite(parsed.getTime()) &&
     parsed.getFullYear() === Number(value.slice(0, 4)) &&
@@ -69,6 +87,7 @@ function validDate(value) {
   );
 }
 
+// Checks 24-hour time in HH:MM format (00:00 - 23:59)
 /** @param {string} value */
 function validTime(value) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
@@ -80,29 +99,45 @@ export function ExerciseFormScreen() {
   const params = useLocalSearchParams();
   const { notify } = useRecordFeedback();
 
+  // The ?edit=ID value from the URL. URL params can be string, array or
+  // undefined, so we only accept a string and otherwise use ''.
   const editParam =
     typeof params.edit === 'string' ? params.edit : '';
 
+  // ---- Form field state (with default values for a new entry) ----
   const [exerciseType, setExerciseType] = useState('Walking');
-  const [duration, setDuration] = useState('30');
+  const [duration, setDuration] = useState('30'); // kept as text because it comes from a TextInput
   const [date, setDate] = useState(today());
   const [time, setTime] = useState(currentTime());
   const [notes, setNotes] = useState('');
 
+  // Id of the record being edited. null means we are creating a new one.
   const [editingId, setEditingId] = useState(
     /** @type {number | null} */ (null)
   );
 
-  const [loading, setLoading] = useState(false);
-  const [loadingEdit, setLoadingEdit] = useState(Boolean(editParam));
-  const [error, setError] = useState('');
+  // ---- UI state ----
+  const [loading, setLoading] = useState(false); // true while saving
+  const [loadingEdit, setLoadingEdit] = useState(Boolean(editParam)); // true while fetching the entry to edit
+  const [error, setError] = useState(''); // message shown under the form
+  // The date the entry had when it was loaded. Used to return to the right
+  // day in the Diary if the user cancels the edit.
   const [recordDate, setRecordDate] = useState(today());
+
+  // A ref (not state) tracking an in-progress save. Refs update immediately,
+  // so a fast double tap on Save can't start two saves.
   const writing = useRef(false);
   useWriteGuard(loading, writing);
+
+  // Tracks whether the screen is still on screen. After an async call we
+  // check this so we don't update state on an unmounted component.
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   const editing = editParam !== '';
+
+  // Back button handler: do nothing while saving; otherwise go back to the
+  // Diary (on the entry's day) when editing, or to the home screen when creating.
   const exit = () => {
     if (writing.current) return;
     if (editing) router.dismissTo({ pathname: '/diary', params: { date: recordDate } });
@@ -111,8 +146,11 @@ export function ExerciseFormScreen() {
 
   // Load existing exercise when opening /exercise?edit=ID
   useEffect(() => {
+    // Create mode, nothing to load
     if (!editParam) return;
 
+    // Flag used to ignore the result if the screen closes or the id changes
+    // before the request finishes (cleanup below sets it to false)
     let active = true;
 
     async function loadExercise() {
@@ -121,6 +159,7 @@ export function ExerciseFormScreen() {
       setEditingId(null);
 
       try {
+        // Validate the id from the URL: it must be a positive whole number
         if (!/^[1-9]\d*$/.test(editParam) || !Number.isSafeInteger(Number(editParam))) {
           throw new Error('Exercise entry not found.');
         }
@@ -128,14 +167,17 @@ export function ExerciseFormScreen() {
 
         const record = await getExercise(id);
 
+        // Screen was closed while waiting, so drop the result
         if (!active) return;
 
+        // Fill the form with the saved values
         setEditingId(record.id);
         setExerciseType(record.exercise_type);
         setDuration(String(record.duration_minutes));
         setDate(record.local_date);
         setRecordDate(record.local_date);
 
+        // The server stores a timestamp; convert it back to local HH:MM for the input
         const recordedTime = new Date(record.occurred_at);
         setTime(
           `${String(recordedTime.getHours()).padStart(2, '0')}:` +
@@ -152,15 +194,19 @@ export function ExerciseFormScreen() {
 
     void loadExercise();
 
+    // Cleanup: mark this load as outdated
     return () => {
       active = false;
     };
   }, [editParam]);
 
+  // Validates the form, then creates or updates the entry
   async function handleSave() {
+    // Ignore taps while already saving, or while the entry to edit is still loading
     if (writing.current || (editing && (loadingEdit || editingId === null))) return;
     setError('');
 
+    // ---- Validation: stop at the first problem and show a message ----
     if (!exerciseType.trim()) {
       setError('Please select an exercise type.');
       return;
@@ -168,6 +214,7 @@ export function ExerciseFormScreen() {
 
     const minutes = Number(duration);
 
+    // Only digits allowed, must be a safe integer and greater than zero
     if (
       !/^\d+$/.test(duration) ||
       !Number.isSafeInteger(minutes) ||
@@ -188,6 +235,7 @@ export function ExerciseFormScreen() {
     }
 
     // Convert selected local date/time into a UTC timestamp.
+    // new Date() reads the string as local time; toISOString() later gives UTC.
     const occurredAt = new Date(`${date}T${time}:00`);
 
     if (!Number.isFinite(occurredAt.getTime())) {
@@ -195,24 +243,28 @@ export function ExerciseFormScreen() {
       return;
     }
 
+    // The object sent to the backend (field names match the API)
     const exercise = {
       exercise_type: exerciseType,
       duration_minutes: minutes,
       occurred_at: occurredAt.toISOString(),
-      local_date: date,
+      local_date: date, // also stored separately so the Diary can group by the user's own day
       notes: notes.trim(),
     };
 
+    // Lock the form while the request is running
     writing.current = true;
     setLoading(true);
 
     try {
+      // Update if we have an id, otherwise create a new entry
       if (editingId !== null) {
         await updateExercise(editingId, exercise);
       } else {
         await createExercise(exercise);
       }
 
+      // Only navigate if the user hasn't already left the screen
       if (mounted.current) {
         notify(editing ? 'Changes saved' : 'Exercise entry saved');
         if (editing) router.dismissTo({ pathname: '/diary', params: { date } });
@@ -221,11 +273,14 @@ export function ExerciseFormScreen() {
     } catch (failure) {
       if (mounted.current) setError(errorMessage(failure));
     } finally {
+      // Always unlock, even if the save failed
       writing.current = false;
       if (mounted.current) setLoading(false);
     }
   }
 
+  // Shared style for all the text inputs, built from theme values
+  // so it follows the app's design system
   const inputStyle = {
     ...theme.typography.body,
     minHeight: theme.controls.minimumTouchTarget,
@@ -244,12 +299,14 @@ export function ExerciseFormScreen() {
       onBack={exit}
       testID="exercise-form"
     >
+      {/* While loading an entry to edit, show only a loading text */}
       {loadingEdit ? (
         <AppText tone="secondary">
           Loading exercise...
         </AppText>
       ) : (
         <>
+          {/* Exercise type: one choice can be selected at a time (radio buttons) */}
           <Card>
             <AppText variant="label">
               Exercise type
@@ -269,6 +326,7 @@ export function ExerciseFormScreen() {
             </View>
           </Card>
 
+          {/* Duration in minutes; number-pad keyboard shows only digits */}
           <Card>
             <AppText variant="label">
               Duration (minutes)
@@ -287,6 +345,7 @@ export function ExerciseFormScreen() {
             />
           </Card>
 
+          {/* Date as text; maxLength 10 fits YYYY-MM-DD */}
           <Card>
             <AppText variant="label">
               Date
@@ -305,6 +364,7 @@ export function ExerciseFormScreen() {
             />
           </Card>
 
+          {/* Time as text; maxLength 5 fits HH:MM */}
           <Card>
             <AppText variant="label">
               Time
@@ -323,6 +383,7 @@ export function ExerciseFormScreen() {
             />
           </Card>
 
+          {/* Optional free-text notes */}
           <Card>
             <AppText variant="label">
               Notes (optional)
@@ -336,6 +397,8 @@ export function ExerciseFormScreen() {
             />
           </Card>
 
+          {/* Validation or server error. accessibilityLiveRegion makes
+              screen readers announce it when it appears. */}
           {error !== '' && (
             <AppText
               tone="danger"
@@ -345,6 +408,7 @@ export function ExerciseFormScreen() {
             </AppText>
           )}
 
+          {/* Disabled while saving, or when editing before the entry has loaded */}
           <Button
             label={editing ? 'Save changes' : 'Save exercise'}
             onPress={() => void handleSave()}
