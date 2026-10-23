@@ -64,6 +64,27 @@ db.serialize(() => {
         ON exercise (local_date)
     `);
 
+    // Sleep table: one row per night, local_date is the wake-up day
+    db.run(`
+        CREATE TABLE IF NOT EXISTS sleep (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sleep_start TEXT NOT NULL,
+            sleep_end TEXT NOT NULL,
+            local_date TEXT NOT NULL,
+            quality INTEGER CHECK (quality BETWEEN 1 AND 5),
+            awakenings INTEGER NOT NULL DEFAULT 0
+                CHECK (awakenings BETWEEN 0 AND 20),
+            morning_energy INTEGER CHECK (morning_energy BETWEEN 1 AND 5),
+            notes TEXT
+        )
+    `);
+
+    // Index for finding sleep entries by date
+    db.run(`
+        CREATE INDEX IF NOT EXISTS idx_sleep_date
+        ON sleep (local_date)
+    `);
+
 
 });
 

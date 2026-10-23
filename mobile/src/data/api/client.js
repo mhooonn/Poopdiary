@@ -48,7 +48,12 @@ function publishRecordChange() {
 /** @typedef {SymptomDraft & {id: number, notes: string | null}} SymptomRecord */
 /** @typedef {RequestOptions & {date?: string}} ListSymptomsOptions */
 
-/** @typedef {RequestOptions & {method?: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: BowelDraft | FoodDraft | DrinkDraft | DrinkChanges | ExerciseDraft | SymptomDraft, empty?: boolean}} ApiRequestOptions */
+// sleep
+/** @typedef {{sleep_start: string, sleep_end: string, local_date: string, quality?: number | null, awakenings: number, morning_energy?: number | null, notes?: string | null}} SleepDraft */
+/** @typedef {SleepDraft & {id: number, quality: number | null, morning_energy: number | null, notes: string | null}} SleepRecord */
+/** @typedef {RequestOptions & {date?: string}} ListSleepOptions */
+
+/** @typedef {RequestOptions & {method?: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: BowelDraft | FoodDraft | DrinkDraft | DrinkChanges | ExerciseDraft | SymptomDraft | SleepDraft, empty?: boolean}} ApiRequestOptions */
 
 export class ApiError extends Error {
   /** @param {ApiErrorCode} code @param {string} message @param {number} [status] */
@@ -199,6 +204,47 @@ function isSymptomList(value) {
   return Array.isArray(value) && value.every(isSymptomRecord);
 }
 
+/** @param {unknown} value @param {number} max @returns {boolean} */
+function isOptionalScale(value, max) {
+  return value == null || (
+    typeof value === 'number' && Number.isInteger(value) &&
+    value >= 1 && value <= max
+  );
+}
+
+/** @param {unknown} value @returns {value is SleepDraft} */
+function isSleepDraft(value) {
+  return isObject(value)
+    && isUtcTimestamp(value.sleep_start)
+    && isUtcTimestamp(value.sleep_end)
+    && new Date(/** @type {string} */ (value.sleep_end)).getTime() >
+      new Date(/** @type {string} */ (value.sleep_start)).getTime()
+    && isLocalDate(value.local_date)
+    && isOptionalScale(value.quality, 5)
+    && typeof value.awakenings === 'number'
+    && Number.isInteger(value.awakenings)
+    && value.awakenings >= 0
+    && value.awakenings <= 20
+    && isOptionalScale(value.morning_energy, 5)
+    && (value.notes == null ||
+      (typeof value.notes === 'string' && value.notes.length <= 1000));
+}
+
+/** @param {unknown} value @returns {value is SleepRecord} */
+function isSleepRecord(value) {
+  return isObject(value)
+    && Number.isSafeInteger(value.id)
+    && /** @type {number} */ (value.id) > 0
+    && isSleepDraft(value)
+    && (value.quality === null || typeof value.quality === 'number')
+    && (value.morning_energy === null || typeof value.morning_energy === 'number')
+    && (value.notes === null || typeof value.notes === 'string');
+}
+
+/** @param {unknown} value @returns {value is SleepRecord[]} */
+function isSleepList(value) {
+  return Array.isArray(value) && value.every(isSleepRecord);
+}
 
 /**
  * Adapter for the team's API. Values remain in the server's units.
@@ -317,6 +363,14 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
     return `/api/symptoms/${id}`;
   }
 
+    /** @param {number} id */
+  function sleepPath(id) {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new ApiError('validation', 'Choose a valid sleep entry.');
+    }
+    return `/api/sleep/${id}`;
+  }
+
   return {
   /** @param {RequestOptions} [options] */
   getHealth: (options = {}) => request('/api/health', isHealth, options),
@@ -353,6 +407,45 @@ export function createApiClient({ baseUrl, fetchImpl = fetch, timeoutMs = 10000 
     /** @param {number} id */
     exercisePath: undefined,
 
+        // SLEEP API
+    /** @param {ListSleepOptions} [options] @returns {Promise<SleepRecord[]>} */
+    async listSleep(options = {}) {
+      if (options.date !== undefined && !isLocalDate(options.date)) {
+        throw new ApiError('validation', 'Choose a valid date.');
+      }
+      const query = options.date === undefined
+        ? '' : `?date=${encodeURIComponent(options.date)}`;
+      return request(`/api/sleep${query}`, isSleepList, options);
+    },
+
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<SleepRecord>} */
+    async getSleep(id, options = {}) {
+      return request(sleepPath(id), isSleepRecord, options);
+    },
+
+    /** @param {SleepDraft} value @param {RequestOptions} [options] @returns {Promise<SleepRecord>} */
+    async createSleep(value, options = {}) {
+      if (!isSleepDraft(value)) {
+        throw new ApiError('validation', 'Check the sleep entry before saving.');
+      }
+      return request('/api/sleep', isSleepRecord, { ...options, method: 'POST', body: value });
+    },
+
+    /** @param {number} id @param {SleepDraft} value @param {RequestOptions} [options] @returns {Promise<SleepRecord>} */
+    async updateSleep(id, value, options = {}) {
+      if (!isSleepDraft(value)) {
+        throw new ApiError('validation', 'Check the sleep entry before saving.');
+      }
+      return request(sleepPath(id), isSleepRecord, { ...options, method: 'PUT', body: value });
+    },
+
+    /** @param {number} id @param {RequestOptions} [options] @returns {Promise<void>} */
+    async deleteSleep(id, options = {}) {
+      return request(sleepPath(id), (value) => value === undefined, {
+        ...options, method: 'DELETE', empty: true,
+      });
+    },
+    
     // EXERCISE API
 
     /** @param {ListExerciseOptions} [options] @returns {Promise<ExerciseRecord[]>} */

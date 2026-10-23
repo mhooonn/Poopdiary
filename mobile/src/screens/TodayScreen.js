@@ -49,6 +49,7 @@ export function TodayScreen() {
   const foodError = errors.some((error) => error.kind === 'food');
   const bowelError = errors.some((error) => error.kind === 'bowel');
   const exersiceError = errors.some((error) => error.kind === 'exercise');
+  const sleepError = errors.some((error) => error.kind === 'sleep');
 
   // Calculate how much of the daily water goal has been reached
   const waterPercent = Math.min(
@@ -118,6 +119,10 @@ export function TodayScreen() {
 
             <AppText tone="secondary">
               {summary.exercise.length} exercises
+            </AppText>
+
+            <AppText tone="secondary">
+              {summary.sleep.length > 0 ? summary.sleep[0].title : 'No sleep'}
             </AppText>
           </View>
         )}
@@ -298,6 +303,33 @@ export function TodayScreen() {
                     .map((exercise) => exercise.title)
                     .join(' · ')}
                 </AppText>
+                </>
+              )}
+            </Card>
+
+            {/* Sleep */}
+            <Card>
+              <AppText variant="sectionTitle">
+                😴 Sleep
+              </AppText>
+
+              {sleepError ? (
+                <AppText>Could not load sleep data.</AppText>
+              ) : summary.sleep.length === 0 ? (
+                <AppText tone="secondary">Nothing logged yet.</AppText>
+              ) : (
+                <>
+                  <AppText variant="sectionTitle">
+                    {summary.sleep[0].title}
+                  </AppText>
+
+                  <AppText tone="secondary">
+                    {summary.sleep[0].detail}
+                  </AppText>
+
+                  <AppText tone="secondary">
+                    Woke up {summary.sleep[0].time}
+                  </AppText>
                 </>
               )}
             </Card>

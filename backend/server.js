@@ -6,6 +6,7 @@ const { createBowelRouter } = require("./routes/bowel");
 const drinkRouter = require("./routes/drink");
 const exerciseRouter = require("./routes/exercise");
 const symptomRouter = require("./routes/symptoms");
+const sleepRouter = require("./routes/sleep");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,9 @@ app.use("/api/exercise", exerciseRouter);
 
 // Symptom routes
 app.use("/api/symptoms", symptomRouter);
+
+// Sleep routes
+app.use("/api/sleep", sleepRouter);
 
 // Symptoms routes
 app.get("/", (req, res) => {
