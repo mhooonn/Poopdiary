@@ -17,6 +17,7 @@ export function createAppearanceStore(storage) {
     },
     /** @param {unknown} value */
     async save(value) {
+      // Normalize before saving so an invalid preference cannot break the theme on restart.
       const appearance = normalizeAppearance(value);
       await storage.setItem(APPEARANCE_STORAGE_KEY, appearance);
       return appearance;

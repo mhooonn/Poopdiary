@@ -14,6 +14,7 @@ export function ReminderRuntime() {
   const router = useRouter();
 
   useEffect(() => {
+    // Web and Expo Go can render the app, but do not start the native reminder runtime.
     if (Platform.OS === 'web' || isRunningInExpoGo()) return undefined;
 
     /** @type {Set<string>} */
@@ -26,6 +27,7 @@ export function ReminderRuntime() {
       const identifier = notification.request.identifier;
       if (handledResponses.has(identifier)) return;
       handledResponses.add(identifier);
+      // A tap can be delivered more than once during cold start; handle it only once.
       void dismissNotification(identifier).catch(() => undefined);
       router.replace('/');
       refreshSchedule();
@@ -40,11 +42,13 @@ export function ReminderRuntime() {
       else removeListeners();
     }).catch(() => undefined);
     const unsubscribeRecords = subscribeRecordChanges(() => {
+      // Any new diary entry may make today's reminder unnecessary.
       refreshSchedule();
     });
     let previousState = AppState.currentState;
     const stateSubscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active' && previousState !== 'active') {
+        // Re-check permissions and rebuild the rolling window after system settings changes.
         void clearPresentedNotifications().catch(() => undefined);
         refreshSchedule();
       }

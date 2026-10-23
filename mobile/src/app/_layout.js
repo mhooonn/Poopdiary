@@ -22,6 +22,7 @@ function Navigation() {
     notification: theme.colors.feedback.danger.fg,
   } }}>
     <View style={{ flex: 1, backgroundColor: theme.colors.surface.canvas }}>
+      {/* Keep notification and app-state listeners alive across route changes. */}
       <ReminderRuntime />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.surface.canvas }, animation: reducedMotion ? 'none' : 'default' }} />
     </View>

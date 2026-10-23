@@ -93,6 +93,7 @@ function BowelEditorForm({ record }) {
         else router.dismissTo('/');
       }
     } catch (failure) {
+      // Leave the draft untouched so the user can retry after a failed write.
       if (mounted.current) setError(bowelError(failure, 'save'));
     } finally {
       writing.current = false;
@@ -103,6 +104,7 @@ function BowelEditorForm({ record }) {
     const next = adjacentStep(step, form);
     if (next) setStep(next);
   };
+  // Warning signs leave the editor before the save action is available.
   if (warning) return <SafetyStop sign={warning} onBack={() => setWarning(null)} />;
 
   const readableWidth = gridWidth / fontScale;

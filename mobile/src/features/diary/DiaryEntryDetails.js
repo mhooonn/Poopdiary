@@ -36,6 +36,7 @@ export function DiaryEntryDetails({ entry, onClose, onDeleted }) {
         await remove(entry.id);
       } else if (entry.kind === 'food') {
         await deleteFood(entry.id);
+        // Food photos are local files, so deleting the API record needs a separate cleanup step.
         try {
           await foodPhotoStore.removePhoto(entry.id);
         } catch {
@@ -155,12 +156,14 @@ function FoodPhotoDetails({ foodId }) {
 
   useEffect(() => {
     let active = true;
+    // Diary details may render before the local photo lookup finishes; ignore late results after closing.
     void foodPhotoStore.getPhotoUri(foodId)
       .then((value) => { if (active) setUri(value); })
       .catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
   }, [foodId]);
 
+  // The web build cannot access the native photo directory, but the record itself remains visible.
   if (Platform.OS === 'web') return <AppText tone="secondary">Meal photos are available on the device where they were added.</AppText>;
   if (!uri) return failed ? <AppText tone="secondary">Meal photo is unavailable on this device.</AppText> : null;
 

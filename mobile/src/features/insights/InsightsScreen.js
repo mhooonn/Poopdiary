@@ -1,11 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { AlertCircle, BarChart3, RefreshCw } from 'lucide-react-native';
-import { Pressable, View } from 'react-native';
+import { AlertCircle, BarChart3, Check, LockKeyhole, RefreshCw, Sparkles } from 'lucide-react-native';
+import { Platform, Pressable, View } from 'react-native';
 
 import { listBowel, listDrinks, listExercise, listFood, subscribeRecordChanges } from '../../data/api';
 import { AppText, Button, Card, RecordIcon, Screen, useTheme } from '../../design-system';
 import { dayLabel, shortDate, summarizeInsights } from './model';
+import { buildAiDataPayload } from './aiModel';
+import { generateInsightReport } from './aiClient';
+import { getAiConsent, getAiSettings, setAiConsent } from './aiStorage';
+import { AiInsightReport } from './AiInsightReport';
 
 const RANGE_OPTIONS = [
   { value: 7, label: '7 days' },
@@ -23,6 +27,7 @@ const ACTIVITY_SERIES = /** @type {const} */ ([
 const SOURCE_LABELS = /** @type {Record<SourceKind, string>} */ ({ food: 'Food', bowel: 'Bowel', water: 'Drinks', exercise: 'Exercise' });
 
 /** @typedef {{food: any[], bowel: any[], water: any[], exercise: any[]}} Records */
+/** @typedef {{report:import('./aiModel').AiInsightReport,coverage:ReturnType<typeof buildAiDataPayload>['coverage']}} SavedAiReport */
 
 function initialRecords() {
   return /** @type {Records} */ ({ food: [], bowel: [], water: [], exercise: [] });
@@ -36,13 +41,23 @@ export function InsightsScreen() {
   const [records, setRecords] = useState(initialRecords);
   const [errors, setErrors] = useState(/** @type {SourceError[]} */ ([]));
   const [loading, setLoading] = useState(true);
+  const [aiSettings, setAiSettings] = useState(/** @type {{endpoint:string,model:string,apiKey:string}|null} */ (null));
+  const [aiConsent, setAiConsentState] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  // Keep both periods so switching views does not require another AI request.
+  const [aiReports, setAiReports] = useState(/** @type {Partial<Record<number,SavedAiReport>>} */ ({}));
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState('');
   const request = useRef(/** @type {AbortController|null} */ (null));
+  const aiRequest = useRef(/** @type {AbortController|null} */ (null));
+  const aiReportRecordsSignature = useRef('');
 
   const refresh = useCallback(() => {
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
     setLoading(true);
+    // Load each record type independently so one unavailable endpoint does not hide the rest.
     Promise.allSettled([
       listFood({ signal: controller.signal }),
       listBowel({ signal: controller.signal }),
@@ -57,6 +72,14 @@ export function InsightsScreen() {
         if (result.status === 'fulfilled') next[kind] = result.value;
         else nextErrors.push({ kind, message: result.reason instanceof Error ? result.reason.message : 'Could not load records.' });
       });
+      const nextSignature = JSON.stringify(next);
+      if (aiReportRecordsSignature.current && nextSignature !== aiReportRecordsSignature.current) {
+        aiRequest.current?.abort();
+        aiRequest.current = null;
+        setAiBusy(false);
+        setAiReports({});
+        aiReportRecordsSignature.current = '';
+      }
       setRecords(next);
       setErrors(nextErrors);
       setLoading(false);
@@ -66,16 +89,91 @@ export function InsightsScreen() {
 
   useFocusEffect(useCallback(() => {
     void refresh();
+    let active = true;
+    void getAiSettings().then(async (settings) => {
+      const consent = await getAiConsent(settings.endpoint);
+      if (!active) return;
+      setAiSettings(settings);
+      setAiConsentState(consent);
+      setAiError('');
+    }).catch(() => { if (active) setAiError('Could not load AI settings.'); });
+    // Diary writes notify this screen while it is open, so the summary stays current.
     const unsubscribe = subscribeRecordChanges(() => { void refresh(); });
     return () => {
       unsubscribe();
+      active = false;
       request.current?.abort();
+      aiRequest.current?.abort();
+      aiRequest.current = null;
+      setAiBusy(false);
     };
   }, [refresh]));
+
+  async function runAiReport() {
+    if (!aiSettings?.apiKey) {
+      setAiError('Add an API key in Developer tools before generating a report.');
+      return;
+    }
+    setAiError('');
+    aiRequest.current?.abort();
+    const controller = new AbortController();
+    aiRequest.current = controller;
+    setAiBusy(true);
+    try {
+      const payload = buildAiDataPayload(records, range);
+      aiReportRecordsSignature.current = JSON.stringify(records);
+      const report = await generateInsightReport(aiSettings, payload, controller.signal);
+      if (controller.signal.aborted) return;
+      setAiReports((current) => ({ ...current, [range]: { report, coverage: payload.coverage } }));
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        const message = error instanceof Error ? error.message : 'Could not generate the report.';
+        setAiError(Platform.OS === 'web' && message.startsWith('Could not reach the AI service')
+          ? 'This provider blocks browser requests (CORS). Generate reports in the native app.'
+          : message);
+      }
+    } finally {
+      if (aiRequest.current === controller) {
+        aiRequest.current = null;
+        setAiBusy(false);
+      }
+    }
+  }
+
+  async function acceptAiConsent() {
+    if (!consentChecked) return;
+    if (!aiSettings) return;
+    await setAiConsent(true, aiSettings.endpoint);
+    setAiConsentState(true);
+    await runAiReport();
+  }
+
+  async function disableAiAnalysis() {
+    aiRequest.current?.abort();
+    aiRequest.current = null;
+    await setAiConsent(false);
+    setAiConsentState(false);
+    setAiReports({});
+    aiReportRecordsSignature.current = '';
+    setConsentChecked(false);
+    setAiError('');
+    setAiBusy(false);
+  }
+
+  /** @param {number} value */
+  function selectRange(value) {
+    if (value === range) return;
+    aiRequest.current?.abort();
+    aiRequest.current = null;
+    setAiBusy(false);
+    setRange(value);
+    setAiError('');
+  }
 
   const summary = summarizeInsights(records, range);
   const hasRecords = summary.totals.entries > 0;
   const loggedDays = summary.daily.filter((day) => day.food + day.bowel + day.water + day.exercise > 0).length;
+  const selectedReport = aiReports[range];
   const retry = () => refresh();
 
   return <Screen title="Insights" testID="insights-screen">
@@ -91,7 +189,7 @@ export function InsightsScreen() {
             accessibilityLabel={option.label}
             accessibilityState={{ checked: selected }}
             aria-checked={selected}
-            onPress={() => setRange(option.value)}
+            onPress={() => selectRange(option.value)}
             onFocus={() => setFocusedRange(option.value)}
             onBlur={() => setFocusedRange((current) => current === option.value ? null : current)}
             style={({ pressed }) => ({
@@ -128,6 +226,21 @@ export function InsightsScreen() {
     </Card>}
 
     {loading ? <LoadingState /> : !hasRecords && errors.length > 0 ? <UnavailableState onRetry={retry} /> : !hasRecords ? <EmptyState onLog={() => router.push('/')} /> : <>
+      <AiInsightPanel
+        report={selectedReport?.report ?? null}
+        reportRange={range}
+        reportCoverage={selectedReport?.coverage ?? null}
+        settings={aiSettings}
+        consent={aiConsent}
+        consentChecked={consentChecked}
+        onConsentChecked={setConsentChecked}
+        onAcceptConsent={() => void acceptAiConsent()}
+        onGenerate={() => void runAiReport()}
+        onDisable={() => void disableAiAnalysis()}
+        busy={aiBusy}
+        error={aiError}
+        onOpenSettings={() => router.push('/dev')}
+      />
       <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingBottom: theme.spacing.md, borderBottomWidth: theme.controls.borderWidth, borderColor: theme.colors.border.default }} testID="insights-summary">
         <Metric label="Entries" value={summary.totals.entries} />
         <SummaryDivider />
@@ -163,6 +276,67 @@ export function InsightsScreen() {
       </Card>}
     </>}
   </Screen>;
+}
+
+/** @param {{report:import('./aiModel').AiInsightReport|null,reportRange:number,reportCoverage:SavedAiReport['coverage']|null,settings:any,consent:boolean,consentChecked:boolean,onConsentChecked:(value:boolean)=>void,onAcceptConsent:()=>void,onGenerate:()=>void,onDisable:()=>void,busy:boolean,error:string,onOpenSettings:()=>void}} props */
+function AiInsightPanel({ report, reportRange, reportCoverage, settings, consent, consentChecked, onConsentChecked, onAcceptConsent, onGenerate, onDisable, busy, error, onOpenSettings }) {
+  const theme = useTheme();
+  if (!settings?.apiKey) return <Card testID="ai-insights-panel" style={{ gap: theme.spacing.md, borderColor: theme.colors.entry.symptom.fg }}>
+    <AiPanelHeading />
+    <AppText tone="secondary">Connect an AI model in Developer tools to turn your logs into a practical pattern report.</AppText>
+    <Button label="Set up AI analysis" variant="secondary" onPress={onOpenSettings} testID="ai-open-settings" />
+  </Card>;
+
+  if (!consent) return <Card testID="ai-consent" style={{ gap: theme.spacing.md, borderColor: theme.colors.entry.symptom.fg }}>
+    <AiPanelHeading />
+    <AppText variant="sectionTitle">Before we analyse your logs</AppText>
+    <AppText tone="secondary">Your last {reportRange} days of diary records will be sent to the configured AI service to look for links between bowel patterns, food, drinks and exercise.</AppText>
+    <AppText variant="caption" tone="secondary">Service: {endpointHost(settings.endpoint)}</AppText>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm }}><LockKeyhole size={theme.controls.smallIcon} color={theme.colors.text.secondary} strokeWidth={theme.controls.iconStrokeWidth} /><AppText variant="caption" tone="secondary" style={{ flex: 1 }}>Sent: day numbers, bowel details, food and drink names, amounts, exercise and symptoms. Not sent: exact dates, record IDs, notes or photos.</AppText></View>
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: consentChecked }}
+      onPress={() => onConsentChecked(!consentChecked)}
+      style={{ flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, minHeight: theme.controls.minimumTouchTarget }}
+      testID="ai-consent-checkbox"
+    >
+      <View style={{ width: theme.controls.smallIcon + theme.spacing.xs, height: theme.controls.smallIcon + theme.spacing.xs, marginTop: theme.spacing.xs, borderRadius: theme.radius.sm, borderWidth: theme.controls.borderWidth, borderColor: consentChecked ? theme.colors.action.primary.background : theme.colors.border.control, backgroundColor: consentChecked ? theme.colors.action.primary.background : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+        {consentChecked && <Check size={theme.controls.smallIcon} color={theme.colors.action.primary.foreground} strokeWidth={theme.controls.iconStrokeWidth} />}
+      </View>
+      <AppText style={{ flex: 1 }}>I understand this is an experimental interpretation of my logged data, not a medical diagnosis.</AppText>
+    </Pressable>
+    <Button label="Enable analysis" disabled={!consentChecked} loading={busy} onPress={onAcceptConsent} testID="ai-accept-consent" />
+  </Card>;
+
+  return <Card testID="ai-insights-panel" style={{ gap: theme.spacing.md, borderColor: theme.colors.entry.symptom.fg }}>
+    <AiPanelHeading />
+    <AppText variant="label" testID="ai-report-period">Last {reportRange} days</AppText>
+    {report ? <>
+      <AiInsightReport key={reportRange} report={report} coverage={reportCoverage} periodDays={reportRange} />
+      <Button label={`Refresh ${reportRange}-day report`} variant="secondary" loading={busy} onPress={onGenerate} testID="ai-refresh-report" />
+      <Button label="Turn off AI analysis" variant="text" onPress={onDisable} testID="ai-disable" />
+    </> : <>
+      <AppText variant="sectionTitle">Find the pattern behind your symptoms</AppText>
+      <AppText tone="secondary">{reportRange === 7 ? 'Find recent links between your bowel patterns, food, drinks and exercise.' : 'Look for recurring patterns and changes across the month.'}</AppText>
+      <Button label={`Generate ${reportRange}-day report`} loading={busy} onPress={onGenerate} testID="ai-generate-report" />
+      <Button label="Turn off AI analysis" variant="text" onPress={onDisable} testID="ai-disable" />
+    </>}
+    {error && <View style={{ padding: theme.spacing.sm, borderRadius: theme.radius.md, backgroundColor: theme.colors.feedback.danger.bg }}><AppText tone="danger" accessibilityLiveRegion="polite">{error}</AppText>{error.includes('Developer tools') && <Button label="Open Developer tools" variant="text" onPress={onOpenSettings} />}</View>}
+  </Card>;
+}
+
+function AiPanelHeading() {
+  const theme = useTheme();
+  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}><View style={{ width: 36, height: 36, borderRadius: theme.radius.md, backgroundColor: theme.colors.entry.symptom.bg, alignItems: 'center', justifyContent: 'center' }}><Sparkles size={theme.controls.icon} color={theme.colors.entry.symptom.fg} strokeWidth={theme.controls.iconStrokeWidth} /></View><View style={{ flex: 1, gap: theme.spacing.xs }}><AppText variant="eyebrow" style={{ color: theme.colors.entry.symptom.fg }}>AI INSIGHTS</AppText><AppText variant="caption" tone="secondary">A clear read of your recent logs</AppText></View><LockKeyhole size={theme.controls.smallIcon} color={theme.colors.text.secondary} strokeWidth={theme.controls.iconStrokeWidth} /></View>;
+}
+
+/** @param {string} endpoint */
+function endpointHost(endpoint) {
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return endpoint;
+  }
 }
 
 function LoadingState() {

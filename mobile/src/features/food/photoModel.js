@@ -30,6 +30,7 @@ export function parseFoodPhotoIndex(raw) {
  * deleteEntry:(name:string)=>Promise<void>
  * },environment?:string}} dependencies */
 export function createFoodPhotoStore({ storage, files, environment = 'default' }) {
+  // Keep each API environment's photo links separate when the same device runs different builds.
   const scope = encodeURIComponent(environment.trim().replace(/\/+$/, '') || 'unconfigured');
   const indexKey = `gutlog.foodPhotos.v1:${scope}`;
   const pendingKey = `gutlog.foodPhotos.pending.v1:${scope}`;
@@ -39,6 +40,7 @@ export function createFoodPhotoStore({ storage, files, environment = 'default' }
   }
 
   async function recoverPendingAttachment() {
+    // The marker makes the file move recoverable if the app closes between moving the file and updating the index.
     const raw = await storage.getItem(pendingKey);
     if (raw === null) return;
 
@@ -97,6 +99,7 @@ export function createFoodPhotoStore({ storage, files, environment = 'default' }
 
       if (await files.entryExists(name)) return files.entryUri(name);
 
+      // The index can outlive a file after a user clears app storage; remove that stale link quietly.
       delete index[id];
       await storage.setItem(indexKey, JSON.stringify(index));
       return null;
@@ -110,6 +113,7 @@ export function createFoodPhotoStore({ storage, files, environment = 'default' }
       await recoverPendingAttachment();
       const index = await readIndex();
       const previous = index[id];
+      // Record the pending move before touching the file so a restart can finish the attachment.
       await storage.setItem(pendingKey, JSON.stringify({ foodId, name, previousName: previous ?? null }));
       const uri = await files.promoteDraft(name);
       index[id] = name;
@@ -126,6 +130,7 @@ export function createFoodPhotoStore({ storage, files, environment = 'default' }
     async discardDraft(name) {
       if (!isPhotoName(name)) return;
       const index = await readIndex();
+      // Never delete a draft name that is already linked to a saved entry.
       if (Object.values(index).includes(name)) return;
       await files.deleteDraft(name);
       await files.deleteEntry(name);

@@ -11,6 +11,7 @@ export function DateTimeSheet(props) {
 /** @param {Parameters<typeof DateTimeSheet>[0]} props */
 function DateTimeDraft({ date, time, onClose, onApply }) {
   const theme = useTheme();
+  // Changes stay in the sheet until Done; closing it keeps the form values.
   const [draftDate, setDate] = useState(date);
   const [draftTime, setTime] = useState(time);
   const [custom, setCustom] = useState(false);

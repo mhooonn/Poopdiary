@@ -7,6 +7,7 @@ function migrateBowel(database) {
                 occurred_at TEXT NOT NULL,
                 stool_type INTEGER CHECK (stool_type BETWEEN 1 AND 7),
                 effort TEXT CHECK (effort IN ('easy', 'normal', 'some_difficulty', 'difficult')),
+                -- Stored as JSON text here; the API returns this field as an array.
                 symptoms TEXT NOT NULL DEFAULT '[]',
                 bloating_level TEXT CHECK (bloating_level IN ('mild', 'moderate', 'severe')),
                 pain_level INTEGER CHECK (pain_level BETWEEN 0 AND 10),

@@ -41,6 +41,7 @@ function recordDate(kind, record) {
 export function summarizeInsights(records, days, now = new Date()) {
   const dates = dateWindow(now, days);
   const dateSet = new Set(dates);
+  // The APIs use different date fields, so convert them to one local-day key first.
   const sources = /** @type {const} */ (['food', 'bowel', 'water', 'exercise']);
   const scoped = Object.fromEntries(sources.map((kind) => [
     kind,
