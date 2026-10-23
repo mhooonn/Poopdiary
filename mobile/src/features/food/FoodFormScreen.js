@@ -59,6 +59,7 @@ export function FoodFormScreen() {
   const [date, setDate] = useState(today());
   const [time, setTime] = useState(currentTime());
   const [notes, setNotes] = useState('');
+  // Keep a new photo separate until the food API record has an id to link it to.
   const [photoDraft, setPhotoDraft] = useState(/** @type {{name:string,uri:string}|null} */ (null));
   const [existingPhotoUri, setExistingPhotoUri] = useState(/** @type {string|null} */ (null));
   const [photoRecordId, setPhotoRecordId] = useState(/** @type {number|null} */ (null));
@@ -87,6 +88,7 @@ export function FoodFormScreen() {
 
   useEffect(() => () => {
     const draft = photoDraftRef.current;
+    // Leaving the form before save should not leave an orphaned camera file behind.
     if (draft) void foodPhotoStore.discardDraft(draft.name).catch(() => undefined);
   }, []);
 
@@ -115,6 +117,7 @@ export function FoodFormScreen() {
     if (editingId === null) return undefined;
 
     let active = true;
+    // Photo links live on the device, so load them alongside the server food record when editing.
     void foodPhotoStore.getPhotoUri(editingId)
       .then((uri) => {
         if (active) {
@@ -134,6 +137,7 @@ export function FoodFormScreen() {
   useEffect(() => {
     if (Platform.OS === 'web') return undefined;
     let active = true;
+    // Android can return the camera result after the activity was recreated.
     void ImagePicker.getPendingResultAsync().then((result) => {
       if (!active || !result) return;
       if ('canceled' in result && !result.canceled && result.assets?.[0]) {
@@ -152,6 +156,7 @@ export function FoodFormScreen() {
     setPhotoBusy(true);
     setPhotoError('');
     try {
+      // Save a processed draft first; the draft is promoted only after the food record is written.
       const name = await foodPhotoStore.saveDraft(asset.uri, asset.width, asset.height);
       const draft = { name, uri: foodPhotoStore.draftUri(name) };
       if (!mounted.current) {
@@ -225,6 +230,7 @@ export function FoodFormScreen() {
   async function syncLocalPhoto(foodId) {
     const draft = photoDraftRef.current;
     if (draft) {
+      // Linking happens after the API response gives us the food id.
       await foodPhotoStore.attachDraft(foodId, draft.name);
       photoDraftRef.current = null;
       setPhotoDraft(null);
@@ -232,6 +238,7 @@ export function FoodFormScreen() {
       setPhotoRecordId(foodId);
       setRemoveExistingPhoto(false);
     } else if (removeExistingPhoto) {
+      // A removed photo is deleted locally only after the server record has saved successfully.
       await foodPhotoStore.removePhoto(foodId);
       setExistingPhotoUri(null);
       setRemoveExistingPhoto(false);

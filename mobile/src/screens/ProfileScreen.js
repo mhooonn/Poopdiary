@@ -24,6 +24,7 @@ export function ProfileScreen() {
   /** @param {'light'|'dark'|'system'} value */
   async function chooseAppearance(value) {
     if (appearanceWrite.current || value === appearance) return;
+    // Keep the segmented control stable while the preference is being written.
     appearanceWrite.current = true;
     setSavingAppearance(true);
     setAppearanceError('');

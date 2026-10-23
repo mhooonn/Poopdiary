@@ -9,6 +9,7 @@ const root = new Directory(Paths.document, 'food-photos');
 const drafts = new Directory(root, 'drafts');
 const entries = new Directory(root, 'entries');
 
+// Drafts belong to the form session; entries are kept after the food record is saved.
 function ensureDirectories() {
   root.create({ idempotent: true, intermediates: true });
   drafts.create({ idempotent: true, intermediates: true });
@@ -23,6 +24,7 @@ const files = {
   /** @param {string} uri @param {number} width @param {number} height */
   async saveDraft(uri, width, height) {
     ensureDirectories();
+    // Resize large camera images before storing them to limit local storage use.
     const context = ImageManipulator.manipulate(uri);
     if (width > 1600 || height > 1600) {
       context.resize(width >= height ? { width: 1600 } : { height: 1600 });
@@ -48,6 +50,7 @@ const files = {
   async promoteDraft(name) {
     ensureDirectories();
     const destination = new File(entries, name);
+    // Promotion is idempotent because retrying a save may reach this point twice.
     if (destination.exists) return destination.uri;
 
     const source = new File(drafts, name);

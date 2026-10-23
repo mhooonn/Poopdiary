@@ -52,6 +52,7 @@ export function ReminderSettings() {
   const [pendingRepeatMode, setPendingRepeatMode] = useState(/** @type {RepeatMode} */ ('every-day'));
   const [pendingWeekdays, setPendingWeekdays] = useState([...DEFAULT_REMINDER_SETTINGS.weekdays]);
 
+  // Re-read system access whenever this screen is opened; permission may change in Settings.
   const refresh = useCallback(async () => {
     try {
       const next = await getReminderSettings();
@@ -76,6 +77,7 @@ export function ReminderSettings() {
     try {
       const saved = await saveReminderSettings(next);
       setSettings(saved);
+      // Saving a preference also rebuilds the scheduled notifications immediately.
       const result = await syncReminderSettings(saved);
       setScheduleState(result.reason);
       setAccess(await getNotificationAccess());
@@ -96,6 +98,7 @@ export function ReminderSettings() {
     if (Platform.OS === 'web') return;
     setBusy(true);
     try {
+      // Ask for permission only after the user opts in from this switch.
       const nextAccess = await requestNotificationAccess();
       setAccess(nextAccess);
       if (!nextAccess.granted || !nextAccess.channelEnabled) {
@@ -111,6 +114,7 @@ export function ReminderSettings() {
   }
 
   async function applyTime() {
+    // Keep picker edits local until the user confirms them.
     const saved = await persist({ ...settings, time: pendingTime });
     if (saved) setShowTimePicker(false);
   }

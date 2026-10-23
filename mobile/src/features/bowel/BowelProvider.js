@@ -23,6 +23,7 @@ export function BowelProvider({ children }) {
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
+    // Ignore older responses if another refresh or a write finishes first.
     const ticket = ++revision.current;
     setStatus('loading');
     setError('');

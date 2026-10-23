@@ -45,7 +45,17 @@ The backend SQLite database is the source of truth. Failed writes retain the for
 
 One owner maintains shared Diary/navigation. Feature owners maintain their forms and API routes. Add new record types through the diary model and API client; do not add separate feature lists or forms to Diary. Old food/drinks preview components remain for compatibility.
 
-Profile stores the light, dark or system appearance preference and contains daily reminder settings. **Developer tools** opens API connection tests and the UI component preview; the preview covers shared control states.
+Profile stores the light, dark or system appearance preference and contains daily reminder settings. **Developer tools** opens API connection tests, the UI component preview and local AI insight settings; the preview covers shared control states.
+
+## AI insights
+
+Insights can turn the logged bowel, food, drink, exercise and symptom data into a short pattern report. The first use asks for consent because the selected data is sent to the configured OpenAI-compatible service. The payload uses day numbers and removes record IDs, exact dates, notes and food photos.
+
+To configure it, open **Profile → Developer tools → AI insight settings**. Enter the service endpoint, API key and model ID, save them locally, then use **Test connection** to load the available models. The default endpoint is `https://790053500.com/v1` and the default model is `gpt-6.1-sol`; the key is kept in local AsyncStorage and is not part of the repository. If the provider blocks browser CORS requests, test the AI flow in the native app instead.
+
+The report is intentionally direct: it separates observed evidence, likely contributors, practical next steps and what to compare next. Choose 7 days for recent patterns or 30 days for recurring patterns and changes across weeks. Each period keeps its own report while the screen is open, so switching periods does not send another request. Reports clear when the underlying logs change. Both periods suggest a short experiment for the coming week.
+
+Reports use everyday English and focus on one useful finding and a practical next step. Counts, supporting patterns, reasons and missing-data notes are under **View evidence and details**. Day numbers stay inside the AI payload; the report uses plain time references such as "this week" instead.
 
 ## API connection
 

@@ -48,6 +48,7 @@ function validate(body) {
         urgency_level: nullableChoice(body.urgency_level, levels, "urgency_level"),
         notes
     };
+    // Drop details for unchecked symptoms so stale form values are not stored.
     if (!selectedSymptoms.includes("bloating")) entry.bloating_level = null;
     if (!selectedSymptoms.includes("pain")) { entry.pain_level = null; entry.pain_location = null; }
     if (!selectedSymptoms.includes("urgency")) entry.urgency_level = null;

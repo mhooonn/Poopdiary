@@ -1,3 +1,4 @@
+// Reminder settings and date calculations. Notification permissions and scheduling are in service.js.
 export const REMINDER_STORAGE_KEY = 'poop-diary.logging-reminder.v1';
 
 export const DEFAULT_REMINDER_SETTINGS = Object.freeze({
@@ -22,6 +23,7 @@ export const REMINDER_WEEKDAYS = [
 
 /** @param {unknown} value */
 export function normalizeReminderSettings(value) {
+  // Use defaults if the saved settings are missing or invalid.
   if (typeof value !== 'object' || value === null) {
     return { ...DEFAULT_REMINDER_SETTINGS, weekdays: [...DEFAULT_REMINDER_SETTINGS.weekdays] };
   }
@@ -61,7 +63,8 @@ export function localDateFromTimestamp(timestamp) {
 }
 
 /**
- * Build a short rolling window of one-time reminders, in local time.
+ * Plan the next few reminders in local time. The app refreshes them when opened,
+ * so reminders stop after this list runs out if the user doesn't come back.
  * @param {{now:Date,time:string,weekdays:number[],recordedDates:Set<string>,limit?:number,lookAheadDays?:number}} options
  */
 export function upcomingReminderDates({ now, time, weekdays, recordedDates, limit = 3, lookAheadDays = 90 }) {
@@ -71,6 +74,7 @@ export function upcomingReminderDates({ now, time, weekdays, recordedDates, limi
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   for (let offset = 0; offset < lookAheadDays && dates.length < limit; offset += 1) {
+    // Build each reminder from its local date instead of adding 24 hours.
     const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + offset, hour, minute);
     const key = localDateKey(date);
     if (date <= now || !weekdays.includes(date.getDay()) || recordedDates.has(key)) continue;

@@ -79,6 +79,7 @@ async function writeState(records) {
 
 async function removePreviousDemoData(baseUrl, previousRecords) {
     let removed = 0;
+    // Only remove IDs recorded by this script; real user data is left alone.
     for (const { resource, id } of previousRecords) {
         try {
             await request(baseUrl, `/api/${resource}/${id}`, "DELETE");
@@ -201,6 +202,7 @@ async function insertRecords(baseUrl, records) {
             const row = await request(baseUrl, `/api/${resource}`, "POST", entry);
             if (!Number.isSafeInteger(row.id) || row.id < 1) throw new Error(`${resource} API did not return a record ID`);
             created.push({ resource, id: row.id });
+            // Save progress after each insert so an interrupted seed can be cleaned up.
             await writeState(created);
         }
     }

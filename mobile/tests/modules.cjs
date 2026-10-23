@@ -29,3 +29,17 @@ exports.insightsModelModule = Promise.all([
   fs.readFile(path.join(__dirname, '../src/features/insights/model.js'), 'utf8'),
   modelUrl,
 ]).then(([source, url]) => import(moduleUrl(source.replace("from '../bowel/model'", `from '${url}'`))));
+
+exports.aiModelModule = Promise.all([
+  fs.readFile(path.join(__dirname, '../src/features/insights/aiModel.js'), 'utf8'),
+  modelUrl,
+]).then(([source, url]) => import(moduleUrl(source.replace("from '../bowel/model'", `from '${url}'`))));
+
+exports.aiClientModule = Promise.all([
+  fs.readFile(path.join(__dirname, '../src/features/insights/aiClient.js'), 'utf8'),
+  fs.readFile(path.join(__dirname, '../src/features/insights/aiModel.js'), 'utf8'),
+  modelUrl,
+]).then(([source, modelSource, bowelUrl]) => {
+  const url = moduleUrl(modelSource.replace("from '../bowel/model'", `from '${bowelUrl}'`));
+  return import(moduleUrl(source.replace("from './aiModel'", `from '${url}'`)));
+});

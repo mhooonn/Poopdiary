@@ -116,6 +116,7 @@ export function toggleSymptom(form, code) {
 
 /** @param {Symptom[]} symptoms @returns {BowelStep[]} */
 export function detailSteps(symptoms) {
+  // Only ask for severity or location when its symptom was selected.
   return /** @type {BowelStep[]} */ (['bloating', 'pain', 'urgency'].filter((code) => symptoms.includes(/** @type {Symptom} */ (code))));
 }
 
@@ -165,6 +166,7 @@ function localTimestamp(date, time) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) throw new Error('Choose a valid date and time.');
   const [year, month, day] = date.split('-').map(Number);
   const [hour, minute] = time.split(':').map(Number);
+  // Form values use local time; reject times skipped by a daylight-saving change.
   const parsed = new Date(0);
   parsed.setFullYear(year, month - 1, day);
   parsed.setHours(hour, minute, 0, 0);
@@ -177,6 +179,7 @@ function localTimestamp(date, time) {
 /** @param {BowelForm} form @param {BowelRecord} [original] @returns {BowelDraft} */
 export function createPayload(form, original) {
   if (form.stoolType === undefined) throw new Error('Choose a stool type or Not sure.');
+  // Keep the original instant when its displayed local date and time were not changed.
   const unchangedTime = original && formatDate(new Date(original.occurred_at)) === form.date && formatTime(new Date(original.occurred_at)) === form.time;
   /** @type {BowelDraft} */
   const payload = {

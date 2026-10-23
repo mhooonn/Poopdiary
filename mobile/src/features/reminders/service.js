@@ -54,6 +54,7 @@ export async function saveReminderSettings(settings) {
 /** @param {NotificationModule} Notifications */
 async function ensureAndroidChannel(Notifications) {
   if (Platform.OS !== 'android') return;
+  // Keep reminders quiet and private; Android keeps these channel choices once created.
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Daily log reminder',
     description: 'A quiet reminder to review today.',
@@ -73,6 +74,7 @@ export async function getNotificationAccess() {
     return { available: false, granted: false, canAskAgain: false, channelEnabled: false };
   }
   const permissions = await Notifications.getPermissionsAsync();
+  // Android can grant app notifications while the user still disables this channel.
   const channel = Platform.OS === 'android'
     ? await Notifications.getNotificationChannelAsync(CHANNEL_ID)
     : null;
@@ -89,6 +91,7 @@ export async function requestNotificationAccess() {
   const Notifications = await getNotifications();
   if (!Notifications) return { available: false, granted: false, canAskAgain: false, channelEnabled: false };
   await ensureAndroidChannel(Notifications);
+  // Request access on demand so opening the app never produces a permission prompt.
   let permissions = await Notifications.getPermissionsAsync();
   if (!permissions.granted && permissions.canAskAgain) {
     permissions = await Notifications.requestPermissionsAsync();
@@ -112,6 +115,7 @@ async function cancelDailyReminders() {
   const Notifications = await getNotifications();
   if (!Notifications) return;
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  // Only remove schedules created by this feature; leave other app notifications alone.
   await Promise.all(scheduled
     .filter((item) => item.content.data?.kind === DAILY_KIND)
     .map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)));
@@ -132,6 +136,7 @@ async function syncReminderSchedule(settings) {
 
   let records;
   try {
+    // Skip scheduling if any supported diary source cannot be checked for today's activity.
     records = await Promise.all([listFood(), listBowel(), listDrinks(), listExercise()]);
   } catch {
     return { available: true, scheduled: 0, reason: 'data' };
@@ -146,6 +151,7 @@ async function syncReminderSchedule(settings) {
     ...records[2].map((record) => record.local_date),
     ...records[3].map((record) => record.local_date),
   ]);
+  // The model skips recorded dates and returns a small one-time window instead of a daily repeat.
   const dates = upcomingReminderDates({
     now: new Date(),
     time: settings.time,
@@ -172,7 +178,7 @@ async function syncReminderSchedule(settings) {
 
 let syncQueue = Promise.resolve();
 
-/** Serialize refreshes so foreground and record writes cannot create duplicate schedules. */
+/** Keep refreshes in order: each pass cancels and rebuilds reminders instead of stacking duplicates. */
 /** @returns {Promise<ReminderScheduleResult>} */
 export function syncSavedReminderSchedule() {
   const current = syncQueue.catch(() => undefined).then(async () => {
@@ -257,8 +263,10 @@ export async function addReminderRuntimeListeners(onResponse) {
   const handleResponse = (response) => {
     if (!active || response.notification.request.content.data?.action !== 'open-today') return;
     onResponse(response);
+    // Prevent a cold-start tap from being replayed the next time listeners are registered.
     void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
   };
+  // Register both foreground taps and cold-start responses from the last notification.
   const responseSubscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
   const receivedSubscription = Notifications.addNotificationReceivedListener(() => {
     void syncSavedReminderSchedule().catch(() => undefined);
