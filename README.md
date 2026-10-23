@@ -24,6 +24,56 @@ Built by **Hao, Max and Laura** for the HAMK Mobile Programming project.
 - **AI:** A configurable OpenAI-compatible API.
 - **Code checks:** JSDoc type checking, ESLint, Node.js tests and GitHub Actions.
 
+## Project management with Miro
+
+We use [our Miro board](https://miro.com/app/board/uXjVHrifOBM=/) to compare ideas, plan features and track tasks and owners. GitHub is used for code, pull requests and reviews.
+
+The screenshots below show our planning at different stages of development. Expand a section to view them.
+
+<details open>
+<summary><strong>Ideas and project scope</strong></summary>
+
+We shared project ideas, chose Poop Diary and agreed on the problem and target users.
+
+![Miro Idea Lab showing the team's initial ideas and the decision to build Poop Diary](assets/readme/miro/idea-lab.png)
+
+![Miro Project Brief showing the problem, target users and value of the app](assets/readme/miro/project-brief.png)
+
+</details>
+
+<details>
+<summary><strong>Team roles and task board</strong></summary>
+
+We assigned owners and split the work into smaller tasks, using To do, In progress and Done columns to track progress.
+
+![Miro Team and Roles showing responsibilities and feature owners](assets/readme/miro/team-roles.png)
+
+![Miro Team Task Board showing tasks, owners and progress columns](assets/readme/miro/team-task-board.png)
+
+</details>
+
+<details>
+<summary><strong>User stories and MVP backlog</strong></summary>
+
+User stories describe what users need and how to check each feature. The backlog helped us choose what to finish first and what could wait.
+
+![Miro User Stories with user needs and checks for each feature](assets/readme/miro/user-stories.png)
+
+![Miro MVP Backlog grouping core features, next tasks and later ideas](assets/readme/miro/mvp-backlog.png)
+
+</details>
+
+<details>
+<summary><strong>App structure and API planning</strong></summary>
+
+We mapped how the app connects to the API and database, and kept the data fields and endpoints together for the team to refer to.
+
+![Miro architecture diagram connecting the React Native app, shared API client, Express API and SQLite](assets/readme/miro/app-architecture.png)
+
+![Miro Data Model and API Endpoints showing database fields and routes](assets/readme/miro/data-model-api.png)
+
+</details>
+
 ## Run locally
 
 You will need **Node.js 22 LTS (22.13 or later)** and npm. For Android, install Android Studio with an emulator, Android SDK and JDK 17.
